@@ -5,15 +5,22 @@
 
 import { useEffect, useState, useRef, FC } from "react";
 import { mergeClasses } from "@fluentui/react-components";
+import { useLiveEvent } from "@microsoft/live-share-react";
 import { getLiveNotificationStyles, getPillStyles } from "../styles/styles";
 import { FlexColumn } from "./flex";
+import { UNIQUE_KEYS } from "../constants";
+import { LivePresence } from "@microsoft/live-share";
 
 interface Notification {
     id: string;
     text: string;
 }
 
-export const LiveNotifications: FC<{ notificationToDisplay?: string }> = ({
+interface ILiveNotificationsProps {
+    notificationToDisplay: string | undefined;
+}
+
+export const LiveNotifications: FC<ILiveNotificationsProps> = ({
     notificationToDisplay,
 }) => {
     const notificationsRef = useRef<Notification[]>([]);
@@ -50,12 +57,12 @@ export const LiveNotifications: FC<{ notificationToDisplay?: string }> = ({
     }, [notificationToDisplay, setNotifications]);
 
     const pillStyles = getPillStyles();
-    const liveNotifications = getLiveNotificationStyles();
+    const liveNotificationStyles = getLiveNotificationStyles();
 
     return (
         <FlexColumn
             hAlign="center"
-            className={mergeClasses(liveNotifications.root)}
+            className={mergeClasses(liveNotificationStyles.root)}
         >
             {notifications.map((notification) => {
                 return (
@@ -69,4 +76,22 @@ export const LiveNotifications: FC<{ notificationToDisplay?: string }> = ({
             })}
         </FlexColumn>
     );
+};
+
+/**
+ * Hook for sending notifications to display across clients
+ */
+const useNotifications = (livePresence: LivePresence) => {
+    const { latestEvent, sendEvent } = useLiveEvent<string>(
+        UNIQUE_KEYS.notifications
+    );
+
+    return {
+        notificationToDisplay: !!latestEvent
+            ? `${livePresence.getUserForClient(latestEvent.clientId)} ${
+                  latestEvent.value
+              }`
+            : undefined,
+        sendNotification: sendEvent,
+    };
 };

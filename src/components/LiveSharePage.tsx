@@ -1,33 +1,28 @@
 import { Text } from "@fluentui/react-components";
 import { Spinner } from "@fluentui/react-components";
 import { app } from "@microsoft/teams-js";
-import { IFluidContainer } from "fluid-framework";
-import { FC, ReactNode, useMemo } from "react";
+import { FC, ReactNode } from "react";
 import { FlexColumn } from "./flex";
 import { inTeams } from "../utils/inTeams";
+import { useLiveShareContext } from "@microsoft/live-share-react";
+import { PageError } from "./PageError";
 
 export const LiveSharePage: FC<{
     children: ReactNode;
-    started: boolean;
-    context?: app.Context;
-    container?: IFluidContainer;
-}> = ({ children, started, context, container }) => {
-    const loadText = useMemo(() => {
-        if (!context) {
-            return "Loading Teams Client SDK...";
-        }
-        if (!container) {
-            return "Joining Live Share session...";
-        }
-        if (!started) {
-            return "Starting sync...";
-        }
-        return undefined;
-    }, [context, container, started]);
+    context: app.Context | undefined;
+}> = ({ children, context }) => {
+    const { joined, joinError } = useLiveShareContext();
+    let loadText: string | undefined;
+    if (!context) {
+        loadText = "Loading Teams Client SDK...";
+    } else if (!joined) {
+        loadText = "Joining Live Share session...";
+    }
 
     return (
         <>
-            {loadText && (
+            {!!joinError && <PageError error={joinError} />}
+            {!!joinError && !!loadText && (
                 <FlexColumn
                     hAlign="center"
                     vAlign="center"

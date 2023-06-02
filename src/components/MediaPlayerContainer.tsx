@@ -8,8 +8,8 @@ import {
     useState,
     useCallback,
     FC,
-    MutableRefObject,
     ReactNode,
+    MutableRefObject,
 } from "react";
 import useResizeObserver from "use-resize-observer";
 import PlayerProgressBar from "./PlayerProgressBar";
@@ -57,7 +57,7 @@ export interface IPlayerState {
 }
 
 interface IMediaPlayerContainerProps {
-    player?: AzureMediaPlayer;
+    player: AzureMediaPlayer | null;
     liveCanvas?: LiveCanvas;
     localUserIsPresenting: boolean;
     localUserIsEligiblePresenter: boolean;
@@ -68,7 +68,7 @@ interface IMediaPlayerContainerProps {
     takeControl: () => void;
     endSuspension: () => void;
     nextTrack: () => void; // todo?
-    canvasRef: MutableRefObject<HTMLDivElement | undefined>;
+    canvasRef: MutableRefObject<HTMLDivElement | null>;
     inkingManager?: InkingManager;
     children: ReactNode;
 }

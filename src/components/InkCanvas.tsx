@@ -8,7 +8,7 @@ const REFERENCE_HEIGHT = 1080;
 interface IInkCanvasProps {
     isEnabled: boolean;
     inkingManager?: InkingManager;
-    canvasRef: MutableRefObject<HTMLDivElement | undefined>;
+    canvasRef: MutableRefObject<HTMLDivElement | null>;
     videoSize: VideoSize | undefined;
 }
 
@@ -37,15 +37,15 @@ export const InkCanvas: FC<IInkCanvasProps> = ({
         }
     }, [videoSize, inkingManager, canvasRef]);
 
-    useEventListener("mousedown", onMouseEvent, canvasRef.current);
-    useEventListener("mouseup", onMouseEvent, canvasRef.current);
-    useEventListener("mousemove", onMouseEvent, canvasRef.current);
+    useEventListener("mousedown", onMouseEvent, canvasRef.current ?? undefined);
+    useEventListener("mouseup", onMouseEvent, canvasRef.current ?? undefined);
+    useEventListener("mousemove", onMouseEvent, canvasRef.current ?? undefined);
 
     return (
         <>
             <div
                 className="noselect"
-                ref={canvasRef as MutableRefObject<HTMLDivElement>}
+                ref={canvasRef}
                 style={{
                     visibility: videoSize ? "visible" : "hidden",
                     position: "absolute",

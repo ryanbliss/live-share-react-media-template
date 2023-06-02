@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ITimestampProvider, LivePresenceUser } from "@microsoft/live-share";
-import { SharedMap } from "fluid-framework";
+import { useCallback, useMemo } from "react";
+import { LivePresenceUser } from "@microsoft/live-share";
 import { IUserData } from "./usePresence";
+import { SendLiveEventAction, useLiveShareContext, useSharedMap } from "@microsoft/live-share-react";
+import { UNIQUE_KEYS } from "../constants";
 
 export const useTakeControl = (
+    localUser: LivePresenceUser<IUserData> | undefined,
     localUserIsEligiblePresenter: boolean,
     users: LivePresenceUser<IUserData>[],
-    takeControlMap?: SharedMap,
-    localUserId?: string,
-    timestampProvider?: ITimestampProvider,
-    sendNotification?: (text: string) => void
+    sendNotification: SendLiveEventAction<string>
 ) => {
-    const [history, setHistory] = useState(new Map<string, number>());
-    const [takeControlStarted, setStarted] = useState(false);
+    const { sharedMap: takeControlMap, map: history } = useSharedMap<number>(
+        UNIQUE_KEYS.takeControl
+    );
+    const { timestampProvider } = useLiveShareContext();
 
     // Computed presentingUser object based on most recent online user to take control
     const presentingUser = useMemo(() => {
@@ -45,55 +46,28 @@ export const useTakeControl = (
 
     // Local user is the presenter
     const localUserIsPresenting = useMemo(() => {
-        if (!presentingUser || !localUserId) {
+        if (!presentingUser || !localUser) {
             return false;
         }
-        return localUserId === presentingUser.userId;
-    }, [localUserId, presentingUser]);
+        return localUser.userId === presentingUser.userId;
+    }, [localUser, presentingUser]);
 
     // Set the local user ID
     const takeControl = useCallback(() => {
-        if (!!localUserId && localUserIsEligiblePresenter) {
-            takeControlMap?.set(localUserId, timestampProvider?.getTimestamp());
-            if (sendNotification) {
-                sendNotification("took control");
-            }
+        if (!!localUser?.userId && localUserIsEligiblePresenter) {
+            takeControlMap?.set(localUser?.userId, timestampProvider?.getTimestamp());
+            sendNotification?.("took control");
         }
     }, [
         takeControlMap,
-        localUserId,
+        localUser,
         localUserIsEligiblePresenter,
         timestampProvider,
         sendNotification,
     ]);
 
-    // Refresh local state with latest values from takeControlMap
-    const refreshControlMap = useCallback(() => {
-        const values = new Map<string, number>();
-        takeControlMap?.forEach((value, key) => {
-            values.set(key, value);
-        });
-        setHistory(values);
-    }, [takeControlMap, setHistory]);
-
-    // Hook to register event listener for takeControlMap
-    useEffect(() => {
-        if (takeControlMap && !takeControlStarted && localUserId) {
-            takeControlMap.on("valueChanged", refreshControlMap);
-            refreshControlMap();
-            console.log("useTakeControl: started take control");
-            setStarted(true);
-        }
-    }, [
-        takeControlMap,
-        localUserId,
-        takeControlStarted,
-        refreshControlMap,
-        setStarted,
-    ]);
-
     return {
-        takeControlStarted,
+        takeControlStarted: !!takeControlMap,
         presentingUser,
         localUserIsPresenting,
         takeControl,

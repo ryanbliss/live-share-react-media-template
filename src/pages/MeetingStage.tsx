@@ -3,86 +3,77 @@
  * Licensed under the MIT License.
  */
 
-import { useEffect, useMemo, useState, useRef, ReactNode, FC } from "react";
+import { useEffect, useState, useRef, FC } from "react";
 import * as liveShareHooks from "../live-share-hooks";
 import {
     LiveNotifications,
     LiveSharePage,
     MediaPlayerContainer,
-    PageError,
 } from "../components";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
-import { ACCEPT_PLAYBACK_CHANGES_FROM } from "../constants/allowed-roles";
 import { useTeamsContext } from "../teams-js-hooks/useTeamsContext";
-import React from "react";
+import {
+    LiveShareProvider,
+} from "@microsoft/live-share-react";
+import { IN_TEAMS } from "../constants";
+import { LiveShareHost } from "@microsoft/teams-js";
+import { TestLiveShareHost } from "@microsoft/live-share";
 
 const MeetingStage: FC = () => {
-    // Flag tracking whether player setup has started
-    const playerSetupStarted = useRef(false);
     // Teams context
     const context = useTeamsContext();
-    // Media player
-    const [player, setPlayer] = useState<AzureMediaPlayer>();
+
+    const hostRef = useRef(
+        IN_TEAMS ? LiveShareHost.create() : TestLiveShareHost.create()
+    );
+
+    // Render the media player
+    return (
+        <LiveShareProvider host={hostRef.current} joinOnLoad>
+            <div style={{ backgroundColor: "black" }}>
+                {/* Live Share wrapper to show loading indicator before setup */}
+                <LiveSharePage context={context}>
+                    <MeetingStageContent />
+                </LiveSharePage>
+            </div>
+        </LiveShareProvider>
+    );
+};
+
+const MeetingStageContent: FC = () => {
     // Element ref for inking canvas
-    const canvasRef = useRef<HTMLDivElement>();
-
-    // Fluid objects hook which uses LiveShareClient to create container
-    const {
-        presence, // LivePresence Fluid object
-        mediaSession, // LiveMediaSession Fluid object
-        notificationEvent, // LiveEvent Fluid object
-        takeControlMap, // SharedMap Fluid object for presenter control
-        playlistMap, // SharedMap Fluid object for playlist
-        liveCanvas, // LiveEvent Fluid object
-        container, // Fluid container
-        error, // Join container error
-        timestampProvider, // LiveShareRuntime instance, used for getting reference server timestamp
-    } = liveShareHooks.useSharedObjects();
-
-    // Notification hook
-    const {
-        notificationStarted, // boolean that is true once notificationEvent.initialize() is called
-        notificationToDisplay, // most recent notification that was sent through notificationEvent
-        sendNotification, // callback method to send a notification through notificationEvent
-    } = liveShareHooks.useNotifications(notificationEvent, context);
+    const canvasRef = useRef<HTMLDivElement | null>(null);
+    // Media player
+    const [player, setPlayer] = useState<AzureMediaPlayer | null>(null);
+    // Flag tracking whether player setup has started
+    const playerSetupStarted = useRef(false);
 
     // Presence hook
-    const {
-        presenceStarted, // boolean that is true once presence.initialize() is called
-        localUser, // local user presence object
-        localUserIsEligiblePresenter, // boolean that is true if local user is eligible to take control
-        users, // user presence array
-    } = liveShareHooks.usePresence(
-        ACCEPT_PLAYBACK_CHANGES_FROM,
-        presence,
-        context,
-        timestampProvider
-    );
+    const { allUsers, localUser, localUserIsEligiblePresenter } =
+        liveShareHooks.usePresence();
+
+    const { notificationToDisplay, sendNotification } =
+        liveShareHooks.useNotifications(allUsers);
 
     // Take control map
     const {
-        takeControlStarted, // boolean that is true once takeControlMap.on() listener is registered
         localUserIsPresenting, // boolean that is true if local user is currently presenting
         takeControl, // callback method to take control of playback
     } = liveShareHooks.useTakeControl(
+        localUser,
         localUserIsEligiblePresenter,
-        users,
-        takeControlMap,
-        localUser?.userId,
-        timestampProvider,
+        allUsers,
         sendNotification
     );
 
     // Playlist map
     const {
-        playlistStarted, // boolean that is true once playlistMap listener is registered
         selectedMediaItem, // selected media item object, or undefined if unknown
         nextTrack, // callback method to skip to the next track
-    } = liveShareHooks.usePlaylist(sendNotification, playlistMap);
+    } = liveShareHooks.usePlaylist(sendNotification);
 
     // Media session hook
     const {
-        mediaSessionStarted, // boolean that is true once mediaSession.initialize() is called
         suspended, // boolean that is true if synchronizer is suspended
         play, // callback method to synchronize a play action
         pause, // callback method to synchronize a pause action
@@ -90,11 +81,9 @@ const MeetingStage: FC = () => {
         endSuspension, // callback method to end the synchronizer suspension
     } = liveShareHooks.useMediaSession(
         localUserIsPresenting,
-        ACCEPT_PLAYBACK_CHANGES_FROM,
-        sendNotification,
-        mediaSession,
+        player,
         selectedMediaItem,
-        player
+        sendNotification
     );
 
     // useLiveCanvas hook will insert the canvas as a child of hosting element
@@ -102,7 +91,8 @@ const MeetingStage: FC = () => {
     // the canvas, changing Ink tool type, and brush colors.
     const {
         inkingManager, // Manager class
-    } = liveShareHooks.useLiveCanvas(liveCanvas, canvasRef.current);
+        liveCanvas // LiveCanvas instance
+    } = liveShareHooks.useInkingManager(canvasRef);
 
     // Set up the media player
     useEffect(() => {
@@ -118,60 +108,33 @@ const MeetingStage: FC = () => {
         amp.addEventListener("ready", onReady);
     }, [selectedMediaItem, player, setPlayer]);
 
-    const started = [
-        notificationStarted,
-        mediaSessionStarted,
-        presenceStarted,
-        takeControlStarted,
-        playlistStarted,
-    ].every((value) => value === true);
-    console.log({
-        notificationStarted,
-        mediaSessionStarted,
-        presenceStarted,
-        takeControlStarted,
-        playlistStarted,
-    });
-
-    // Render the media player
     return (
-        <div style={{ backgroundColor: "black" }}>
-            {/* Display error if container failed to load */}
-            {error && <PageError error={error} />}
-            {/* Live Share wrapper to show loading indicator before setup */}
-            <LiveSharePage
-                context={context}
-                container={container}
-                started={started}
+        <>
+            {/* Display Notifications */}
+            <LiveNotifications notificationToDisplay={notificationToDisplay} />
+            {/* Media Player */}
+            <MediaPlayerContainer
+                player={player}
+                localUserIsPresenting={localUserIsPresenting}
+                localUserIsEligiblePresenter={localUserIsEligiblePresenter}
+                suspended={suspended}
+                canvasRef={canvasRef}
+                inkingManager={inkingManager}
+                liveCanvas={liveCanvas}
+                play={play}
+                pause={pause}
+                seekTo={seekTo}
+                takeControl={takeControl}
+                endSuspension={endSuspension}
+                nextTrack={nextTrack}
             >
-                {/* Display Notifications */}
-                <LiveNotifications
-                    notificationToDisplay={notificationToDisplay}
+                {/* // Render video */}
+                <video
+                    id="video"
+                    className="azuremediaplayer amp-default-skin amp-big-play-centered"
                 />
-                {/* Media Player */}
-                <MediaPlayerContainer
-                    player={player}
-                    localUserIsPresenting={localUserIsPresenting}
-                    localUserIsEligiblePresenter={localUserIsEligiblePresenter}
-                    suspended={suspended}
-                    canvasRef={canvasRef}
-                    inkingManager={inkingManager}
-                    liveCanvas={liveCanvas}
-                    play={play}
-                    pause={pause}
-                    seekTo={seekTo}
-                    takeControl={takeControl}
-                    endSuspension={endSuspension}
-                    nextTrack={nextTrack}
-                >
-                    {/* // Render video */}
-                    <video
-                        id="video"
-                        className="azuremediaplayer amp-default-skin amp-big-play-centered"
-                    />
-                </MediaPlayerContainer>
-            </LiveSharePage>
-        </div>
+            </MediaPlayerContainer>
+        </>
     );
 };
 

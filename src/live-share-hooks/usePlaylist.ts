@@ -1,30 +1,24 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import { MediaItem, searchList } from "../utils/media-list";
-import { debounce } from "lodash";
-import { SharedMap } from "fluid-framework";
+import { useSharedMap, useSharedState } from "@microsoft/live-share-react";
+import { UNIQUE_KEYS } from "../constants";
+import { mediaList } from "../utils/media-list";
 
 /**
  * Hook for tracking video playlist
- *
- * @remarks
- *
- * @param {LivePresence} presence presence object from Fluid container.
- * @param {(string) => void} sendNotification callback method to send a notification through the useNotifications hook.
- * @returns `{playlistStarted, mediaItems, selectedMediaItem, addMediaItem, selectMediaId, nextTrack}` where:
- * - `playlistStarted` is a boolean indicating whether `playlistMap` event listeners were registered.
- * - `mediaItems` is the list of media items.
- * - `selectedMediaItem` is the currently selected media item.
- * - `addMediaItem` is a callback method for adding a media item to the playlist.
- * - `selectMediaId` is a callback method for persisting the media item users intend to watch.
- * - `nextTrack` is a callback method for selecting the next video in the playlist.
  */
-export const usePlaylist = (
-    sendNotification: (text: string) => void,
-    playlistMap?: SharedMap
-) => {
-    const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-    const [selectedId, setSelectedId] = useState();
-    const [playlistStarted, setStarted] = useState(false);
+export const usePlaylist = (sendNotification: (text: string) => void) => {
+    const {
+        map: playlistMap,
+        setEntry,
+        deleteEntry: removeMediaItem,
+        sharedMap,
+    } = useSharedMap<MediaItem>(UNIQUE_KEYS.playlist, getInitialData());
+    const [selectedId, selectMediaId] = useSharedState<string | undefined>(
+        UNIQUE_KEYS.selectedVideoId,
+        mediaList[0].id
+    );
+    const mediaItems: MediaItem[] = [...playlistMap.values()];
 
     const selectedMediaIndex = mediaItems.findIndex(
         (item) => item.id === selectedId
@@ -32,68 +26,25 @@ export const usePlaylist = (
 
     const addMediaItem = useCallback(
         (id: string) => {
-            if (!mediaItems.find((item) => item.id === id)) {
-                const itemToAdd = searchList.find((item) => item.id === id);
-                if (itemToAdd) {
-                    playlistMap?.set(id, itemToAdd);
-                    if (sendNotification) {
-                        sendNotification("added a video to the playlist");
-                    }
-                }
-            }
+            if (playlistMap.has(id)) return;
+            const itemToAdd = searchList.find((item) => item.id === id);
+            if (!itemToAdd) return;
+            setEntry(id, itemToAdd);
+            sendNotification?.("added a video to the playlist");
         },
-        [mediaItems, playlistMap, sendNotification]
-    );
-
-    const removeMediaItem = useCallback(
-        (id: string) => {
-            playlistMap?.delete(id);
-        },
-        [playlistMap]
-    );
-
-    const selectMediaId = useCallback(
-        (id: string) => {
-            playlistMap?.set("selected-media-id", id);
-        },
-        [playlistMap]
+        [playlistMap, setEntry, sendNotification]
     );
 
     const nextTrack = useCallback(() => {
-        if (mediaItems.length > 1) {
-            let incrementIndex = selectedMediaIndex + 1;
-            if (incrementIndex >= mediaItems.length) {
-                incrementIndex = 0;
-            }
-            selectMediaId(mediaItems[incrementIndex].id);
+        if (mediaItems.length <= 1) return;
+        let incrementIndex = selectedMediaIndex + 1;
+        if (incrementIndex >= mediaItems.length) {
+            incrementIndex = 0;
         }
+        selectMediaId(mediaItems[incrementIndex].id);
     }, [selectedMediaIndex, mediaItems, selectMediaId]);
 
-    const refreshMediaItems = useCallback(() => {
-        const items: MediaItem[] = [];
-        playlistMap?.forEach((value, key) => {
-            if (key === "selected-media-id") {
-                setSelectedId(value);
-            } else {
-                items.push(value);
-            }
-        });
-        setMediaItems(items);
-    }, [playlistMap, setMediaItems, setSelectedId]);
-
-    // eslint-disable-next-line
-    const debouncedRefresh = useCallback(debounce(refreshMediaItems, 100), [
-        refreshMediaItems,
-    ]);
-
-    useEffect(() => {
-        if (playlistMap && !playlistStarted) {
-            playlistMap.on("valueChanged", debouncedRefresh);
-            debouncedRefresh();
-            console.log("usePlaylist: started playlist");
-            setStarted(true);
-        }
-    }, [playlistMap, playlistStarted, setStarted, debouncedRefresh]);
+    
 
     const selectedMediaItem =
         selectedMediaIndex >= 0 && mediaItems.length > selectedMediaIndex
@@ -101,7 +52,7 @@ export const usePlaylist = (
             : undefined;
 
     return {
-        playlistStarted,
+        playlistStarted: !!sharedMap,
         mediaItems,
         selectedMediaItem,
         addMediaItem,
@@ -110,3 +61,10 @@ export const usePlaylist = (
         nextTrack,
     };
 };
+
+function getInitialData(): Map<string, MediaItem> {
+    const map = new Map<string, MediaItem>();
+    const initialItem = mediaList[0];
+    map.set(initialItem.id, initialItem);
+    return map;
+}
