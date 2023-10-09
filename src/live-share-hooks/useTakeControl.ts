@@ -1,7 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { LivePresenceUser } from "@microsoft/live-share";
 import { IUserData } from "./usePresence";
-import { SendLiveEventAction, useLiveShareContext, useSharedMap } from "@microsoft/live-share-react";
+import {
+    SendLiveEventAction,
+    useLiveShareContext,
+    useSharedMap,
+} from "@microsoft/live-share-react";
 import { UNIQUE_KEYS } from "../constants";
 
 export const useTakeControl = (
@@ -55,7 +59,10 @@ export const useTakeControl = (
     // Set the local user ID
     const takeControl = useCallback(() => {
         if (!!localUser?.userId && localUserIsEligiblePresenter) {
-            takeControlMap?.set(localUser?.userId, timestampProvider?.getTimestamp());
+            takeControlMap?.set(
+                localUser?.userId,
+                timestampProvider?.getTimestamp()
+            );
             sendNotification?.("took control");
         }
     }, [

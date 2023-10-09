@@ -12,9 +12,7 @@ import {
 } from "../components";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { useTeamsContext } from "../teams-js-hooks/useTeamsContext";
-import {
-    LiveShareProvider,
-} from "@microsoft/live-share-react";
+import { LiveShareProvider } from "@microsoft/live-share-react";
 import { IN_TEAMS } from "../constants";
 import { LiveShareHost } from "@microsoft/teams-js";
 import { TestLiveShareHost } from "@microsoft/live-share";
@@ -91,7 +89,7 @@ const MeetingStageContent: FC = () => {
     // the canvas, changing Ink tool type, and brush colors.
     const {
         inkingManager, // Manager class
-        liveCanvas // LiveCanvas instance
+        liveCanvas, // LiveCanvas instance
     } = liveShareHooks.useInkingManager(canvasRef);
 
     // Set up the media player

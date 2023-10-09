@@ -10,5 +10,5 @@ export const UNIQUE_KEYS = {
     selectedVideoId: "SELECTED-VIDEO-ID",
     presence: "PRESENCE",
     takeControl: "TAKE-CONTROL",
-    inking: "INKING"
+    inking: "INKING",
 };

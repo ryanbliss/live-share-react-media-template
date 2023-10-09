@@ -87,7 +87,7 @@ const useNotifications = (livePresence: LivePresence) => {
     );
 
     return {
-        notificationToDisplay: !!latestEvent
+        notificationToDisplay: latestEvent
             ? `${livePresence.getUserForClient(latestEvent.clientId)} ${
                   latestEvent.value
               }`

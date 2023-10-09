@@ -44,8 +44,6 @@ export const usePlaylist = (sendNotification: (text: string) => void) => {
         selectMediaId(mediaItems[incrementIndex].id);
     }, [selectedMediaIndex, mediaItems, selectMediaId]);
 
-    
-
     const selectedMediaItem =
         selectedMediaIndex >= 0 && mediaItems.length > selectedMediaIndex
             ? mediaItems[selectedMediaIndex]

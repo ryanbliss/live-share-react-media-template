@@ -8,7 +8,11 @@ import { useEffect, useCallback } from "react";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { MediaItem } from "../utils/media-list";
 import { useMediaSynchronizer } from "@microsoft/live-share-react";
-import { ACCEPT_PLAYBACK_CHANGES_FROM, IN_TEAMS, UNIQUE_KEYS } from "../constants";
+import {
+    ACCEPT_PLAYBACK_CHANGES_FROM,
+    IN_TEAMS,
+    UNIQUE_KEYS,
+} from "../constants";
 import { meeting } from "@microsoft/teams-js";
 
 /**
@@ -146,7 +150,12 @@ export const useMediaSession = (
         if (selectedMediaItem) {
             setTrack(selectedMediaItem.src);
         }
-    }, [localUserIsPresenting, mediaSynchronizer, selectedMediaItem?.src, setTrack]);
+    }, [
+        localUserIsPresenting,
+        mediaSynchronizer,
+        selectedMediaItem?.src,
+        setTrack,
+    ]);
 
     // Register audio ducking
     useEffect(() => {
