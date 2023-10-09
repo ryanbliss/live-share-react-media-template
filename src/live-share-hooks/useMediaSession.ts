@@ -67,7 +67,6 @@ export const useMediaSession = (
         if (localUserIsPresenting) {
             // Synchronize the play action
             mediaSynchronizer?.play();
-            // sendNotification(`played the ${selectedMediaItem?.type}`);
         } else {
             // Stop following the presenter and play
             if (!suspended) {
@@ -91,7 +90,6 @@ export const useMediaSession = (
         if (localUserIsPresenting) {
             // Synchronize the pause action
             mediaSynchronizer?.pause();
-            // sendNotification(`paused the ${selectedMediaItem?.type}`);
         } else {
             // Stop following the presenter and pause
             if (!suspended) {
@@ -116,7 +114,6 @@ export const useMediaSession = (
             if (localUserIsPresenting) {
                 // Synchronize the seek action
                 mediaSynchronizer?.seekTo(timestamp);
-                // sendNotification(`seeked the ${selectedMediaItem?.type}`);
             } else {
                 // Stop following the presenter and seek
                 if (!suspended) {
@@ -142,10 +139,10 @@ export const useMediaSession = (
     // Hook to set player to view only mode when user is not the presenter and set track if needed
     useEffect(() => {
         if (!mediaSynchronizer) return;
-        const currentSrc = mediaSynchronizer.player.src;
-        if (currentSrc && currentSrc === selectedMediaItem?.src) return;
         if (!localUserIsPresenting) return;
         if (!selectedMediaItem) return;
+        const currentSrc = mediaSynchronizer.player.src;
+        if (currentSrc && currentSrc === selectedMediaItem?.src) return;
         setTrack(selectedMediaItem.src);
     }, [
         localUserIsPresenting,
