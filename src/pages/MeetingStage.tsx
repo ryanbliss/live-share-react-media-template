@@ -15,7 +15,18 @@ import { useTeamsContext } from "../teams-js-hooks/useTeamsContext";
 import { LiveShareProvider } from "@microsoft/live-share-react";
 import { IN_TEAMS } from "../constants";
 import { LiveShareHost } from "@microsoft/teams-js";
-import { TestLiveShareHost } from "@microsoft/live-share";
+import {
+    ILiveShareClientOptions,
+    TestLiveShareHost,
+} from "@microsoft/live-share";
+import {
+    ISharingStatus,
+    useSharingStatus,
+} from "../teams-js-hooks/useSharingStatus";
+
+const LIVE_SHARE_OPTIONS: ILiveShareClientOptions = {
+    canSendBackgroundUpdates: false, // default to false so we can wait to see
+};
 
 const MeetingStage: FC = () => {
     // Teams context
@@ -24,21 +35,37 @@ const MeetingStage: FC = () => {
     const hostRef = useRef(
         IN_TEAMS ? LiveShareHost.create() : TestLiveShareHost.create()
     );
+    const shareStatus = useSharingStatus();
+    if (!shareStatus) {
+        return null;
+    }
+    // Set canSendBackgroundUpdates setting's initial value
+    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = shareStatus.isShareInitiator;
 
     // Render the media player
     return (
-        <LiveShareProvider host={hostRef.current} joinOnLoad>
+        <LiveShareProvider
+            host={hostRef.current}
+            joinOnLoad
+            clientOptions={LIVE_SHARE_OPTIONS}
+        >
             <div style={{ backgroundColor: "black" }}>
                 {/* Live Share wrapper to show loading indicator before setup */}
                 <LiveSharePage context={context}>
-                    <MeetingStageContent />
+                    <MeetingStageContent shareStatus={shareStatus} />
                 </LiveSharePage>
             </div>
         </LiveShareProvider>
     );
 };
 
-const MeetingStageContent: FC = () => {
+interface IMeetingStateContentProps {
+    shareStatus: ISharingStatus;
+}
+
+const MeetingStageContent: FC<IMeetingStateContentProps> = ({
+    shareStatus,
+}) => {
     // Element ref for inking canvas
     const canvasRef = useRef<HTMLDivElement | null>(null);
     // Media player
@@ -46,29 +73,24 @@ const MeetingStageContent: FC = () => {
     // Flag tracking whether player setup has started
     const playerSetupStarted = useRef(false);
 
-    // Presence hook
-    const { allUsers, localUser, localUserIsEligiblePresenter } =
-        liveShareHooks.usePresence();
-
-    const { notificationToDisplay, sendNotification } =
-        liveShareHooks.useNotifications(allUsers);
+    const { notificationToDisplay, displayNotification } =
+        liveShareHooks.useNotifications();
 
     // Take control map
     const {
         localUserIsPresenting, // boolean that is true if local user is currently presenting
+        localUserIsEligiblePresenter, // boolean that is true if the local user has the required roles to present
         takeControl, // callback method to take control of playback
     } = liveShareHooks.useTakeControl(
-        localUser,
-        localUserIsEligiblePresenter,
-        allUsers,
-        sendNotification
+        shareStatus.isShareInitiator,
+        displayNotification
     );
 
     // Playlist map
     const {
         selectedMediaItem, // selected media item object, or undefined if unknown
         nextTrack, // callback method to skip to the next track
-    } = liveShareHooks.usePlaylist(sendNotification);
+    } = liveShareHooks.usePlaylist();
 
     // Media session hook
     const {
@@ -81,16 +103,8 @@ const MeetingStageContent: FC = () => {
         localUserIsPresenting,
         player,
         selectedMediaItem,
-        sendNotification
+        displayNotification
     );
-
-    // useLiveCanvas hook will insert the canvas as a child of hosting element
-    // and starts the Live Inking session.It returns set of callbacks for clearing
-    // the canvas, changing Ink tool type, and brush colors.
-    const {
-        inkingManager, // Manager class
-        liveCanvas, // LiveCanvas instance
-    } = liveShareHooks.useInkingManager(canvasRef);
 
     // Set up the media player
     useEffect(() => {
@@ -117,8 +131,6 @@ const MeetingStageContent: FC = () => {
                 localUserIsEligiblePresenter={localUserIsEligiblePresenter}
                 suspended={suspended}
                 canvasRef={canvasRef}
-                inkingManager={inkingManager}
-                liveCanvas={liveCanvas}
                 play={play}
                 pause={pause}
                 seekTo={seekTo}

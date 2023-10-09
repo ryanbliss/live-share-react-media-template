@@ -3,7 +3,11 @@
  * Licensed under the MIT License.
  */
 
-import { ExtendedMediaMetadata } from "@microsoft/live-share-media";
+import {
+    ExtendedMediaMetadata,
+    IMediaPlayerSynchronizerEvent,
+    MediaPlayerSynchronizerEvents,
+} from "@microsoft/live-share-media";
 import { useEffect, useCallback } from "react";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { MediaItem } from "../utils/media-list";
@@ -14,6 +18,7 @@ import {
     UNIQUE_KEYS,
 } from "../constants";
 import { meeting } from "@microsoft/teams-js";
+import { DisplayNotificationCallback } from "./useNotifications";
 
 /**
  * Hook that synchronizes a media element using MediaSynchronizer and LiveMediaSession
@@ -28,7 +33,7 @@ export const useMediaSession = (
     localUserIsPresenting: boolean,
     player: AzureMediaPlayer | null,
     selectedMediaItem: MediaItem | undefined,
-    sendNotification: (text: string) => void
+    displayNotification: DisplayNotificationCallback
 ) => {
     const { mediaSynchronizer, suspended, beginSuspension, endSuspension } =
         useMediaSynchronizer(
@@ -36,7 +41,8 @@ export const useMediaSession = (
             player,
             selectedMediaItem?.src ?? null,
             ACCEPT_PLAYBACK_CHANGES_FROM,
-            !localUserIsPresenting
+            !localUserIsPresenting, // viewOnly for can play/pause/seek/setTrack
+            localUserIsPresenting // canSendPositionUpdates for large meeting optimizations
         );
 
     // callback method to change the selected track src
@@ -52,14 +58,8 @@ export const useMediaSession = (
                 title: selectedMediaItem ? selectedMediaItem?.title : "",
             };
             mediaSynchronizer?.setTrack(metadata);
-            sendNotification(`changed the ${selectedMediaItem?.type}`);
         },
-        [
-            mediaSynchronizer,
-            selectedMediaItem,
-            localUserIsPresenting,
-            sendNotification,
-        ]
+        [mediaSynchronizer, selectedMediaItem, localUserIsPresenting]
     );
 
     // callback method to play through the synchronizer
@@ -67,7 +67,7 @@ export const useMediaSession = (
         if (localUserIsPresenting) {
             // Synchronize the play action
             mediaSynchronizer?.play();
-            sendNotification(`played the ${selectedMediaItem?.type}`);
+            // sendNotification(`played the ${selectedMediaItem?.type}`);
         } else {
             // Stop following the presenter and play
             if (!suspended) {
@@ -84,7 +84,6 @@ export const useMediaSession = (
         suspended,
         beginSuspension,
         endSuspension,
-        sendNotification,
     ]);
 
     // callback method to play through the synchronizer
@@ -92,7 +91,7 @@ export const useMediaSession = (
         if (localUserIsPresenting) {
             // Synchronize the pause action
             mediaSynchronizer?.pause();
-            sendNotification(`paused the ${selectedMediaItem?.type}`);
+            // sendNotification(`paused the ${selectedMediaItem?.type}`);
         } else {
             // Stop following the presenter and pause
             if (!suspended) {
@@ -109,7 +108,6 @@ export const useMediaSession = (
         suspended,
         beginSuspension,
         endSuspension,
-        sendNotification,
     ]);
 
     // callback method to seek a video to a given timestamp (in seconds)
@@ -118,7 +116,7 @@ export const useMediaSession = (
             if (localUserIsPresenting) {
                 // Synchronize the seek action
                 mediaSynchronizer?.seekTo(timestamp);
-                sendNotification(`seeked the ${selectedMediaItem?.type}`);
+                // sendNotification(`seeked the ${selectedMediaItem?.type}`);
             } else {
                 // Stop following the presenter and seek
                 if (!suspended) {
@@ -138,7 +136,6 @@ export const useMediaSession = (
             suspended,
             beginSuspension,
             endSuspension,
-            sendNotification,
         ]
     );
 
@@ -147,9 +144,9 @@ export const useMediaSession = (
         if (!mediaSynchronizer) return;
         const currentSrc = mediaSynchronizer.player.src;
         if (currentSrc && currentSrc === selectedMediaItem?.src) return;
-        if (selectedMediaItem) {
-            setTrack(selectedMediaItem.src);
-        }
+        if (!localUserIsPresenting) return;
+        if (!selectedMediaItem) return;
+        setTrack(selectedMediaItem.src);
     }, [
         localUserIsPresenting,
         mediaSynchronizer,
@@ -159,7 +156,8 @@ export const useMediaSession = (
 
     // Register audio ducking
     useEffect(() => {
-        if (!mediaSynchronizer || !IN_TEAMS) return;
+        if (!mediaSynchronizer) return;
+        if (!IN_TEAMS) return;
         // Will replace existing handler
         meeting.registerSpeakingStateChangeHandler((speakingState) => {
             if (speakingState.isSpeakingDetected) {
@@ -169,6 +167,57 @@ export const useMediaSession = (
             }
         });
     }, [mediaSynchronizer]);
+
+    // Register group event listener for display notifications
+    useEffect(() => {
+        if (!mediaSynchronizer) return;
+        function onGroupAction(evt: IMediaPlayerSynchronizerEvent): void {
+            if (!mediaSynchronizer) return;
+            let displayText: string;
+            switch (evt.details.action) {
+                case "play": {
+                    displayText = `played the ${selectedMediaItem?.type}`;
+                    break;
+                }
+                case "pause": {
+                    displayText = `paused the ${selectedMediaItem?.type}`;
+                    break;
+                }
+                case "seekto": {
+                    displayText = `seeked the ${selectedMediaItem?.type}`;
+                    break;
+                }
+                case "settrack": {
+                    displayText = `changed the ${selectedMediaItem?.type}`;
+                    break;
+                }
+                default: {
+                    return;
+                }
+            }
+            displayNotification(
+                mediaSynchronizer.mediaSession,
+                displayText,
+                evt.details.clientId,
+                localUserIsPresenting
+            );
+        }
+        mediaSynchronizer.addEventListener(
+            MediaPlayerSynchronizerEvents.groupaction,
+            onGroupAction
+        );
+        return () => {
+            mediaSynchronizer.removeEventListener(
+                MediaPlayerSynchronizerEvents.groupaction,
+                onGroupAction
+            );
+        };
+    }, [
+        mediaSynchronizer,
+        selectedMediaItem,
+        localUserIsPresenting,
+        displayNotification,
+    ]);
 
     // Return relevant objects and callbacks UI layer
     return {

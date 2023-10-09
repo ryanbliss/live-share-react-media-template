@@ -3,33 +3,42 @@
  * Licensed under the MIT License.
  */
 
-import { useLiveEvent } from "@microsoft/live-share-react";
-import { UNIQUE_KEYS } from "../constants";
-import { LivePresenceUser } from "@microsoft/live-share";
+import { LiveDataObject } from "@microsoft/live-share";
+import { useCallback, useState } from "react";
+
+export type DisplayNotificationCallback = (
+    dds: LiveDataObject,
+    baseText: string,
+    clientId: string,
+    local: boolean
+) => Promise<void>;
 
 /**
  * Hook for sending notifications to display across clients
  */
-export const useNotifications = (allUsers: LivePresenceUser[] | undefined) => {
-    const { latestEvent, sendEvent } = useLiveEvent<string>(
-        UNIQUE_KEYS.notifications
+export const useNotifications = () => {
+    const [notificationToDisplay, setNotificationToDisplay] =
+        useState<string>();
+    const displayNotification = useCallback(
+        async (
+            dds: LiveDataObject,
+            baseText: string,
+            clientId: string,
+            local: boolean
+        ) => {
+            if (local) {
+                setNotificationToDisplay(`You ${baseText}`);
+                return;
+            }
+            const clientInfo = await dds.getClientInfo(clientId);
+            const displayName = clientInfo?.displayName ?? "Unknown";
+            setNotificationToDisplay(`${displayName} ${baseText}`);
+        },
+        []
     );
 
-    const userForEvent =
-        !!latestEvent &&
-        !!allUsers &&
-        allUsers.length > 0 &&
-        allUsers.find((user) => !!user.getConnection(latestEvent.clientId));
-
     return {
-        notificationToDisplay:
-            !!latestEvent && !!userForEvent
-                ? `${
-                      userForEvent.isLocalUser
-                          ? "You"
-                          : userForEvent.displayName
-                  } ${latestEvent.value}`
-                : undefined,
-        sendNotification: sendEvent,
+        notificationToDisplay,
+        displayNotification,
     };
 };

@@ -1,47 +1,54 @@
-import * as microsoftTeams from "@microsoft/teams-js";
+import * as teamsJs from "@microsoft/teams-js";
 import { useEffect, useState, useRef } from "react";
+import { inTeams } from "../utils/inTeams";
 
-export const useSharingStatus = (context?: microsoftTeams.app.Context) => {
-    const [sharingActive, setSharingActive] = useState(false);
+export interface ISharingStatus {
+    isAppSharing: boolean;
+    isShareInitiator: boolean;
+}
+
+export const useSharingStatus = (): ISharingStatus | undefined => {
+    const [status, setSharingStatus] = useState<ISharingStatus | undefined>(
+        () => {
+            if (inTeams()) return undefined;
+            return {
+                isAppSharing: false,
+                isShareInitiator: true,
+            };
+        }
+    );
     const intervalIdRef = useRef<NodeJS.Timer>();
 
     useEffect(() => {
+        if (!inTeams()) return;
         if (!intervalIdRef.current) {
-            // Mobile does not yet support getAppContentStageSharingState API.
-            // TODO: Filter out this API in mobile until its supported.
-            const clientType = context?.app?.host?.clientType;
-            const apiIsSupported =
-                clientType &&
-                ![
-                    microsoftTeams.HostClientType.web,
-                    microsoftTeams.HostClientType.desktop,
-                ].includes(clientType);
-            if (
-                !apiIsSupported &&
-                microsoftTeams.meeting &&
-                context?.page?.frameContext ===
-                    microsoftTeams.FrameContexts.sidePanel
-            ) {
+            if (teamsJs.meeting) {
                 const setAppSharingStatus = () => {
-                    microsoftTeams.meeting.getAppContentStageSharingCapabilities(
+                    teamsJs.meeting.getAppContentStageSharingCapabilities(
                         (capabilitiesError, result) => {
                             if (
                                 !capabilitiesError &&
                                 result?.doesAppHaveSharePermission
                             ) {
-                                microsoftTeams.meeting.getAppContentStageSharingState(
+                                teamsJs.meeting.getAppContentStageSharingState(
                                     (_, state) => {
                                         if (state) {
-                                            setSharingActive(
-                                                state.isAppSharing
+                                            setSharingStatus(
+                                                polyfillSharingStatus(state)
                                             );
                                         } else {
-                                            setSharingActive(false);
+                                            setSharingStatus({
+                                                isAppSharing: false,
+                                                isShareInitiator: false,
+                                            });
                                         }
                                     }
                                 );
                             } else {
-                                setSharingActive(false);
+                                setSharingStatus({
+                                    isAppSharing: false,
+                                    isShareInitiator: false,
+                                });
                             }
                         }
                     );
@@ -57,7 +64,30 @@ export const useSharingStatus = (context?: microsoftTeams.app.Context) => {
                 clearInterval(intervalIdRef.current);
             }
         };
-    }, [context, setSharingActive, intervalIdRef]);
+    }, []);
 
-    return sharingActive;
+    return status;
 };
+
+/**
+ * Teams JS has not yet added `isShareInitiator` to the `IAppContentStageSharingState` interface.
+ * However, it does return it in the response, so we polyfill it.
+ */
+function polyfillSharingStatus(
+    state: teamsJs.meeting.IAppContentStageSharingState
+): ISharingStatus {
+    if (isShareStatus(state)) return state;
+    return {
+        isAppSharing: state.isAppSharing,
+        isShareInitiator: false,
+    };
+}
+
+function isShareStatus(value: any): value is ISharingStatus {
+    if (typeof value !== "object") return false;
+    if (typeof value.isAppSharing !== "boolean") return false;
+    return (
+        typeof value.isShareInitiator === "boolean" ||
+        value.isShareInitiator === undefined
+    );
+}

@@ -7,7 +7,7 @@ import { mediaList } from "../utils/media-list";
 /**
  * Hook for tracking video playlist
  */
-export const usePlaylist = (sendNotification: (text: string) => void) => {
+export const usePlaylist = () => {
     const {
         map: playlistMap,
         setEntry,
@@ -30,9 +30,8 @@ export const usePlaylist = (sendNotification: (text: string) => void) => {
             const itemToAdd = searchList.find((item) => item.id === id);
             if (!itemToAdd) return;
             setEntry(id, itemToAdd);
-            sendNotification?.("added a video to the playlist");
         },
-        [playlistMap, setEntry, sendNotification]
+        [playlistMap, setEntry]
     );
 
     const nextTrack = useCallback(() => {

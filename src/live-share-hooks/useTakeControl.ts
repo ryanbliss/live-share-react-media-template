@@ -1,81 +1,101 @@
-import { useCallback, useMemo } from "react";
-import { LivePresenceUser } from "@microsoft/live-share";
-import { IUserData } from "./usePresence";
+import { useCallback, useEffect } from "react";
+import {
+    FollowModeType,
+    LiveDataObjectInitializeState,
+} from "@microsoft/live-share";
 import {
     SendLiveEventAction,
-    useLiveShareContext,
-    useSharedMap,
+    useFluidObjectsContext,
+    useLiveFollowMode,
 } from "@microsoft/live-share-react";
-import { UNIQUE_KEYS } from "../constants";
+import { ACCEPT_PLAYBACK_CHANGES_FROM, UNIQUE_KEYS } from "../constants";
+import { DisplayNotificationCallback } from "./useNotifications";
 
 export const useTakeControl = (
-    localUser: LivePresenceUser<IUserData> | undefined,
-    localUserIsEligiblePresenter: boolean,
-    users: LivePresenceUser<IUserData>[],
-    sendNotification: SendLiveEventAction<string>
+    isShareInitiator: boolean,
+    displayNotification: DisplayNotificationCallback
 ) => {
-    const { sharedMap: takeControlMap, map: history } = useSharedMap<number>(
-        UNIQUE_KEYS.takeControl
-    );
-    const { timestampProvider } = useLiveShareContext();
-
-    // Computed presentingUser object based on most recent online user to take control
-    const presentingUser = useMemo(() => {
-        const mappedUsers = users.map((user) => {
-            return {
-                userId: user.userId,
-                state: user.state,
-                data: user.data,
-                lastInControlTimestamp: user.userId
-                    ? history.get(user.userId)
-                    : 0,
-            };
-        });
-        mappedUsers.sort((a, b) => {
-            // Sort by joined timestamp in descending
-            if (a.lastInControlTimestamp === b.lastInControlTimestamp) {
-                return (
-                    (a.data?.joinedTimestamp ?? 0) -
-                    (b.data?.joinedTimestamp ?? 0)
-                );
-            }
-            // Sort by last in control time in ascending
-            return (
-                (b.lastInControlTimestamp ?? 0) -
-                (a.lastInControlTimestamp ?? 0)
-            );
-        });
-        return mappedUsers[0];
-    }, [history, users]);
+    const { clientRef } = useFluidObjectsContext();
+    const { state, localUser, startPresenting, liveFollowMode } =
+        useLiveFollowMode<null>(
+            UNIQUE_KEYS.takeControl,
+            null,
+            ACCEPT_PLAYBACK_CHANGES_FROM
+        );
 
     // Local user is the presenter
-    const localUserIsPresenting = useMemo(() => {
-        if (!presentingUser || !localUser) {
-            return false;
-        }
-        return localUser.userId === presentingUser.userId;
-    }, [localUser, presentingUser]);
+    const localUserIsPresenting = state?.isLocalValue ?? false;
+    const localUserIsEligiblePresenter = localUser
+        ? localUser.roles.filter((role) =>
+              ACCEPT_PLAYBACK_CHANGES_FROM.includes(role)
+          ).length > 0
+        : false;
 
     // Set the local user ID
     const takeControl = useCallback(() => {
-        if (!!localUser?.userId && localUserIsEligiblePresenter) {
-            takeControlMap?.set(
-                localUser?.userId,
-                timestampProvider?.getTimestamp()
-            );
-            sendNotification?.("took control");
-        }
+        if (!liveFollowMode) return;
+        if (!localUser) return;
+        if (!state) return;
+        if (state.type === FollowModeType.activePresenter) return;
+        if (!localUserIsEligiblePresenter) return;
+        startPresenting();
     }, [
-        takeControlMap,
-        localUser,
         localUserIsEligiblePresenter,
-        timestampProvider,
-        sendNotification,
+        localUser,
+        liveFollowMode,
+        state,
+        startPresenting,
+        displayNotification,
     ]);
 
+    // Start presenting if nobody is in control and local user isShareInitiator
+    useEffect(() => {
+        if (
+            liveFollowMode?.initializeState !==
+            LiveDataObjectInitializeState.succeeded
+        )
+            return;
+        if (!state) return;
+        if (!isShareInitiator) return;
+        if (state.type !== FollowModeType.local) return;
+        startPresenting();
+    }, [
+        isShareInitiator,
+        state,
+        liveFollowMode?.initializeState,
+        startPresenting,
+    ]);
+
+    // Set canSendBackgroundUpdates when localUserIsPresenting changes
+    useEffect(() => {
+        // We will allow both the presenter and isShareInitiator to send background updates.
+        // These will be the same as long as nobody has taken control since presenting started.
+        // We want at least one client to always have this value == true so that `connect` events are not missed.
+        // Since `liveFollowMode` starts out with no presenter, this will ensure at least one client is always in a `connect` state.
+        // This is safer even it this may mean two clients are responding to `connect` events / sending background events.
+        // When not in Teams, this is currently set to always be true, since `isShareInitiator` is hardcoded to true.
+        clientRef.current.canSendBackgroundUpdates =
+            localUserIsPresenting || isShareInitiator;
+    }, [clientRef, localUserIsPresenting, isShareInitiator]);
+
+    useEffect(() => {
+        if (!liveFollowMode) return;
+        if (!state) return;
+        const user = liveFollowMode.getUser(state.followingUserId);
+        if (!user) return;
+        const userConnections = user.getConnections();
+        if (userConnections.length === 0) return;
+        displayNotification(
+            liveFollowMode,
+            user.isLocalUser ? "are in control" : "is in control",
+            userConnections[0].clientId,
+            user.isLocalUser
+        );
+    }, [state?.type, liveFollowMode]);
+
     return {
-        takeControlStarted: !!takeControlMap,
-        presentingUser,
+        takeControlStarted: !!liveFollowMode,
+        localUserIsEligiblePresenter,
         localUserIsPresenting,
         takeControl,
     };
