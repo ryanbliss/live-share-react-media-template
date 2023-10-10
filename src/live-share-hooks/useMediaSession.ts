@@ -8,7 +8,7 @@ import {
     IMediaPlayerSynchronizerEvent,
     MediaPlayerSynchronizerEvents,
 } from "@microsoft/live-share-media";
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback } from "react";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { MediaItem } from "../utils/media-list";
 import { useMediaSynchronizer } from "@microsoft/live-share-react";
@@ -167,12 +167,11 @@ export const useMediaSession = (
     }, [mediaSynchronizer]);
 
     // Register group event listener for display notifications
-    const hasSkippedFirstTrackChangeRef = useRef(false);
     useEffect(() => {
         if (!mediaSynchronizer) return;
         function onGroupAction(evt: IMediaPlayerSynchronizerEvent): void {
             if (!mediaSynchronizer) return;
-            // if (evt.details.source !== "user") return;
+            if (evt.details.source !== "user") return;
             let displayText: string;
             switch (evt.details.action) {
                 case "play": {
@@ -188,12 +187,6 @@ export const useMediaSession = (
                     break;
                 }
                 case "settrack": {
-                    // The first track change always happens on first load, so we skip displaying it.
-                    // This is not the most elegant solution and is something we hope to improve.
-                    if (!hasSkippedFirstTrackChangeRef.current) {
-                        hasSkippedFirstTrackChangeRef.current = true;
-                        return;
-                    }
                     displayText = `changed the ${selectedMediaItem?.type}`;
                     break;
                 }
