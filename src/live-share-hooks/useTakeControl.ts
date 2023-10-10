@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
     FollowModeType,
     LiveDataObjectInitializeState,
@@ -78,6 +78,8 @@ export const useTakeControl = (
             localUserIsPresenting || isShareInitiator;
     }, [clientRef, localUserIsPresenting, isShareInitiator]);
 
+    // Display take control notification
+    const hasSkippedFirstRef = useRef(false);
     useEffect(() => {
         if (!liveFollowMode) return;
         if (!state) return;
@@ -85,13 +87,18 @@ export const useTakeControl = (
         if (!user) return;
         const userConnections = user.getConnections();
         if (userConnections.length === 0) return;
+        // Skip the first notification when the app first loads
+        if (!hasSkippedFirstRef.current) {
+            hasSkippedFirstRef.current = true;
+            return;
+        }
         displayNotification(
             liveFollowMode,
             user.isLocalUser ? "are in control" : "is in control",
             userConnections[0].clientId,
             user.isLocalUser
         );
-    }, [state?.type, liveFollowMode]);
+    }, [state?.isLocalValue, liveFollowMode]);
 
     return {
         takeControlStarted: !!liveFollowMode,
