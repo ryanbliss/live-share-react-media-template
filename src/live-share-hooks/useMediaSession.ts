@@ -30,6 +30,7 @@ import { DisplayNotificationCallback } from "./useNotifications";
  * while MediaSynchronizer is synchronizing.
  */
 export const useMediaSession = (
+    threadId: string,
     localUserIsPresenting: boolean,
     isShareInitiator: boolean,
     player: AzureMediaPlayer | null,
@@ -38,7 +39,7 @@ export const useMediaSession = (
 ) => {
     const { mediaSynchronizer, suspended, beginSuspension, endSuspension } =
         useMediaSynchronizer(
-            UNIQUE_KEYS.media,
+            `${threadId}/${UNIQUE_KEYS.media}`, // unique key for meeting + media
             player,
             selectedMediaItem?.src ?? null,
             ACCEPT_PLAYBACK_CHANGES_FROM,

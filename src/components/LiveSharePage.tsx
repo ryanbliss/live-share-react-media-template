@@ -47,9 +47,11 @@ export const LiveSharePage: FC<{
                     </Text>
                 </FlexColumn>
             )}
-            <div style={{ visibility: loadText ? "hidden" : undefined }}>
-                {children}
-            </div>
+            {!!context && (
+                <div style={{ visibility: loadText ? "hidden" : undefined }}>
+                    {children}
+                </div>
+            )}
         </>
     );
 };

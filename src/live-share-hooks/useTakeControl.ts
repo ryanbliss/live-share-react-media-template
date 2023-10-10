@@ -11,13 +11,14 @@ import { ACCEPT_PLAYBACK_CHANGES_FROM, UNIQUE_KEYS } from "../constants";
 import { DisplayNotificationCallback } from "./useNotifications";
 
 export const useTakeControl = (
+    threadId: string,
     isShareInitiator: boolean,
     displayNotification: DisplayNotificationCallback
 ) => {
     const { clientRef } = useFluidObjectsContext();
     const { state, localUser, startPresenting, liveFollowMode } =
         useLiveFollowMode<null>(
-            UNIQUE_KEYS.takeControl,
+            `${threadId}/${UNIQUE_KEYS.takeControl}`,
             null,
             ACCEPT_PLAYBACK_CHANGES_FROM
         );

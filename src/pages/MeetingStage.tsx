@@ -14,7 +14,7 @@ import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { useTeamsContext } from "../teams-js-hooks/useTeamsContext";
 import { LiveShareProvider } from "@microsoft/live-share-react";
 import { IN_TEAMS } from "../constants";
-import { LiveShareHost } from "@microsoft/teams-js";
+import { LiveShareHost, app } from "@microsoft/teams-js";
 import {
     ILiveShareClientOptions,
     TestLiveShareHost,
@@ -23,6 +23,7 @@ import {
     ISharingStatus,
     useSharingStatus,
 } from "../teams-js-hooks/useSharingStatus";
+import { getInitialMediaItem } from "../utils/media-list";
 
 const LIVE_SHARE_OPTIONS: ILiveShareClientOptions = {
     canSendBackgroundUpdates: false, // default to false so we can wait to see
@@ -52,7 +53,10 @@ const MeetingStage: FC = () => {
             <div style={{ backgroundColor: "black" }}>
                 {/* Live Share wrapper to show loading indicator before setup */}
                 <LiveSharePage context={context}>
-                    <MeetingStageContent shareStatus={shareStatus} />
+                    <MeetingStageContent
+                        context={context!}
+                        shareStatus={shareStatus}
+                    />
                 </LiveSharePage>
             </div>
         </LiveShareProvider>
@@ -60,10 +64,14 @@ const MeetingStage: FC = () => {
 };
 
 interface IMeetingStateContentProps {
+    context: app.Context;
     shareStatus: ISharingStatus;
 }
 
+const SELECTED_MEDIA_ITEM = getInitialMediaItem();
+
 const MeetingStageContent: FC<IMeetingStateContentProps> = ({
+    context,
     shareStatus,
 }) => {
     // Element ref for inking canvas
@@ -76,21 +84,22 @@ const MeetingStageContent: FC<IMeetingStateContentProps> = ({
     const { notificationToDisplay, displayNotification } =
         liveShareHooks.useNotifications();
 
+    const threadId =
+        context.meeting?.id ??
+        context.chat?.id ??
+        context.channel?.id ??
+        "unknown";
+
     // Take control map
     const {
         localUserIsPresenting, // boolean that is true if local user is currently presenting
         localUserIsEligiblePresenter, // boolean that is true if the local user has the required roles to present
         takeControl, // callback method to take control of playback
     } = liveShareHooks.useTakeControl(
+        threadId,
         shareStatus.isShareInitiator,
         displayNotification
     );
-
-    // Playlist map
-    const {
-        selectedMediaItem, // selected media item object, or undefined if unknown
-        nextTrack, // callback method to skip to the next track
-    } = liveShareHooks.usePlaylist();
 
     // Media session hook
     const {
@@ -100,26 +109,27 @@ const MeetingStageContent: FC<IMeetingStateContentProps> = ({
         seekTo, // callback method to synchronize a seekTo action
         endSuspension, // callback method to end the synchronizer suspension
     } = liveShareHooks.useMediaSession(
+        threadId,
         localUserIsPresenting,
         shareStatus.isShareInitiator,
         player,
-        selectedMediaItem,
+        SELECTED_MEDIA_ITEM,
         displayNotification
     );
 
     // Set up the media player
     useEffect(() => {
-        if (player || !selectedMediaItem || playerSetupStarted.current) return;
+        if (player || playerSetupStarted.current) return;
         playerSetupStarted.current = true;
         // Setup Azure Media Player
-        const amp = new AzureMediaPlayer("video", selectedMediaItem.src);
+        const amp = new AzureMediaPlayer("video", SELECTED_MEDIA_ITEM.src);
         // Set player when AzureMediaPlayer is ready to go
         const onReady = () => {
             setPlayer(amp);
             amp.removeEventListener("ready", onReady);
         };
         amp.addEventListener("ready", onReady);
-    }, [selectedMediaItem, player, setPlayer]);
+    }, [player, setPlayer]);
 
     return (
         <>
@@ -137,7 +147,6 @@ const MeetingStageContent: FC<IMeetingStateContentProps> = ({
                 seekTo={seekTo}
                 takeControl={takeControl}
                 endSuspension={endSuspension}
-                nextTrack={nextTrack}
             >
                 {/* // Render video */}
                 <video

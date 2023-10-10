@@ -27,7 +27,7 @@ interface IPlayerControlsProps {
     liveCanvas: LiveCanvas | undefined;
     localUserIsEligiblePresenter: boolean;
     localUserIsPresenting: boolean;
-    nextTrack: () => void;
+    nextTrack?: () => void;
     playerState: IPlayerState;
     setInkActive: Dispatch<SetStateAction<boolean>>;
     suspended: boolean;
@@ -79,7 +79,7 @@ export const PlayerControls: FC<IPlayerControlsProps> = ({
                     onClick={togglePlayPause}
                 />
                 {/* Next Track Button */}
-                {localUserIsPresenting && (
+                {localUserIsPresenting && !!nextTrack && (
                     <Button
                         icon={<Next20Filled />}
                         appearance="transparent"

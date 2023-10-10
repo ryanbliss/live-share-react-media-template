@@ -11,10 +11,11 @@ import { useLiveCanvas } from "@microsoft/live-share-react";
  * Sets up LiveCanvas instance
  */
 export const useInkingManager = (
+    threadId: string,
     hostingElement: RefObject<HTMLDivElement | null>
 ) => {
     const { inkingManager, liveCanvas } = useLiveCanvas(
-        UNIQUE_KEYS.inking,
+        `${threadId}/${UNIQUE_KEYS.inking}`,
         hostingElement
     );
 

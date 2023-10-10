@@ -64,10 +64,15 @@ const createFakeContext = () => {
         id: `user${Math.abs(Math.random() * 999999999)}`,
     };
 
+    const fakeMeetingInfo: app.MeetingInfo = {
+        id: "foo",
+    };
+
     const fakeContext: app.Context = {
         app: fakeAppInfo,
         page: fakePageInfo,
         user: fakeUserInfo,
+        meeting: fakeMeetingInfo,
     };
 
     return fakeContext;

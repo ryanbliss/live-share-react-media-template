@@ -67,7 +67,7 @@ interface IMediaPlayerContainerProps {
     seekTo: (time: number) => void;
     takeControl: () => void;
     endSuspension: () => void;
-    nextTrack: () => void; // todo?
+    nextTrack?: () => void; // todo?
     canvasRef: MutableRefObject<HTMLDivElement | null>;
     inkingManager?: InkingManager;
     children: ReactNode;
