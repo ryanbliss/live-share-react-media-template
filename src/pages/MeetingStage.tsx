@@ -101,6 +101,7 @@ const MeetingStageContent: FC<IMeetingStateContentProps> = ({
         endSuspension, // callback method to end the synchronizer suspension
     } = liveShareHooks.useMediaSession(
         localUserIsPresenting,
+        shareStatus.isShareInitiator,
         player,
         selectedMediaItem,
         displayNotification

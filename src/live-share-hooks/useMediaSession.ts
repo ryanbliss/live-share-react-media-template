@@ -31,6 +31,7 @@ import { DisplayNotificationCallback } from "./useNotifications";
  */
 export const useMediaSession = (
     localUserIsPresenting: boolean,
+    isShareInitiator: boolean,
     player: AzureMediaPlayer | null,
     selectedMediaItem: MediaItem | undefined,
     displayNotification: DisplayNotificationCallback
@@ -42,7 +43,7 @@ export const useMediaSession = (
             selectedMediaItem?.src ?? null,
             ACCEPT_PLAYBACK_CHANGES_FROM,
             !localUserIsPresenting, // viewOnly for can play/pause/seek/setTrack
-            localUserIsPresenting // canSendPositionUpdates for large meeting optimizations
+            localUserIsPresenting || isShareInitiator // canSendPositionUpdates for large meeting optimizations
         );
 
     // callback method to change the selected track src
@@ -171,6 +172,7 @@ export const useMediaSession = (
         if (!mediaSynchronizer) return;
         function onGroupAction(evt: IMediaPlayerSynchronizerEvent): void {
             if (!mediaSynchronizer) return;
+            // if (evt.details.source !== "user") return;
             let displayText: string;
             switch (evt.details.action) {
                 case "play": {

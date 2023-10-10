@@ -4,7 +4,6 @@ import {
     LiveDataObjectInitializeState,
 } from "@microsoft/live-share";
 import {
-    SendLiveEventAction,
     useFluidObjectsContext,
     useLiveFollowMode,
 } from "@microsoft/live-share-react";
