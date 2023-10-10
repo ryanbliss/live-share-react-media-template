@@ -13,7 +13,7 @@ export const useSharingStatus = (): ISharingStatus | undefined => {
             if (inTeams()) return undefined;
             return {
                 isAppSharing: false,
-                isShareInitiator: true,
+                isShareInitiator: getSimulatedIsShareInitiator(),
             };
         }
     );
@@ -90,4 +90,11 @@ function isShareStatus(value: any): value is ISharingStatus {
         typeof value.isShareInitiator === "boolean" ||
         value.isShareInitiator === undefined
     );
+}
+
+// In localhost, we will default to isShareInitiator == true, but can override with isShareInitiator search param.
+function getSimulatedIsShareInitiator(): boolean {
+    const url = new URL(window.location.href);
+    const param = url.searchParams.get("isShareInitiator");
+    return param !== null ? param === "true" : true;
 }
