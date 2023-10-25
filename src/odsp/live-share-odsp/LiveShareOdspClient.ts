@@ -1,6 +1,5 @@
 import {
     ConnectionState,
-    ContainerSchema,
     FluidContainer,
     IFluidContainer,
     LoadableObjectClassRecord,
@@ -23,15 +22,24 @@ import {
     getLiveShareContainerSchemaProxy,
 } from "@microsoft/live-share";
 import { FluidTurboClient } from "@microsoft/live-share-turbo";
-import { AzureContainerServices } from "@fluidframework/azure-client";
 
 const documentId = uuid();
+
+/**
+ * Response object from `.joinContainer()` in `LiveShareClient`
+ */
+export interface ILiveShareOdspJoinResults extends ILiveShareJoinResults {
+    /**
+     * Odsp Container Services, which includes things like Fluid Audience
+     */
+    services: OdspContainerServices;
+}
 
 export class LiveShareOdspClient extends FluidTurboClient {
     private _host: ILiveShareHost;
     private readonly _runtime: LiveShareRuntime;
     private readonly _options: ILiveShareClientOptions;
-    private _results: ILiveShareJoinResults | undefined;
+    private _results: ILiveShareOdspJoinResults | undefined;
     /**
      * Creates a new `LiveShareClient` instance.
      * @param host Host for the current Live Share session.
@@ -77,7 +85,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
     /**
      * Get the Fluid join container results
      */
-    public override get results(): ILiveShareJoinResults | undefined {
+    public override get results(): ILiveShareOdspJoinResults | undefined {
         return this._results;
     }
 
@@ -104,7 +112,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
     async join(
         initialObjects?: LoadableObjectClassRecord,
         onContainerFirstCreated?: (container: IFluidContainer) => void
-    ): Promise<ILiveShareJoinResults> {
+    ): Promise<ILiveShareOdspJoinResults> {
         // Apply runtime to ContainerSchema
         const containerSchema = getLiveShareContainerSchemaProxy(
             this.getContainerSchema(initialObjects),
@@ -179,7 +187,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
         const results = {
             container,
             // TODO: fix
-            services: services as AzureContainerServices,
+            services,
             timestampProvider: this._runtime.timestampProvider,
             created: isNew,
         };

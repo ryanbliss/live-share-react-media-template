@@ -1,11 +1,6 @@
-import {
-    ILiveShareClientOptions,
-    ILiveShareHost,
-    ILiveShareJoinResults,
-} from "@microsoft/live-share";
+import { ILiveShareClientOptions, ILiveShareHost } from "@microsoft/live-share";
 import {
     FluidContext,
-    ILiveShareContext,
     LiveShareContext,
     DeleteSharedStateAction,
     IAzureContainerResults,
@@ -21,7 +16,10 @@ import {
     SharedMap,
 } from "fluid-framework";
 import React from "react";
-import { LiveShareOdspClient } from "./LiveShareOdspClient";
+import {
+    ILiveShareOdspJoinResults,
+    LiveShareOdspClient,
+} from "./LiveShareOdspClient";
 
 /**
  * Prop types for {@link LiveShareProvider} component.
@@ -63,7 +61,7 @@ export const LiveShareOdspProvider: React.FC<ILiveShareProviderProps> = (
         new LiveShareOdspClient(props.host, props.clientOptions)
     );
     const [results, setResults] = React.useState<
-        ILiveShareJoinResults | undefined
+        ILiveShareOdspJoinResults | undefined
     >();
     const [joinError, setJoinError] = React.useState<Error | undefined>();
 
@@ -76,7 +74,7 @@ export const LiveShareOdspProvider: React.FC<ILiveShareProviderProps> = (
         async (
             initialObjects?: LoadableObjectClassRecord,
             onInitializeContainer?: (container: IFluidContainer) => void
-        ): Promise<ILiveShareJoinResults> => {
+        ): Promise<ILiveShareOdspJoinResults> => {
             startedRef.current = true;
             const results = await clientRef.current.join(
                 initialObjects,
@@ -145,12 +143,6 @@ export const LiveShareOdspProvider: React.FC<ILiveShareProviderProps> = (
         </LiveShareContext.Provider>
     );
 };
-
-function isLiveShareContext(value: any): value is ILiveShareContext {
-    return (
-        typeof value?.created === "boolean" && typeof value?.join === "function"
-    );
-}
 
 interface ISharedStateRegistryResponse {
     /**
