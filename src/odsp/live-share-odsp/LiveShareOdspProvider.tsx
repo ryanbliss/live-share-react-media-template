@@ -24,7 +24,7 @@ import {
 /**
  * Prop types for {@link LiveShareProvider} component.
  */
-export interface ILiveShareProviderProps {
+export interface ILiveShareOdspProviderProps {
     /**
      * Optional. React children node for the React Context Provider
      */
@@ -48,17 +48,25 @@ export interface ILiveShareProviderProps {
      * Optional. Flag to determine whether to join Fluid container on load.
      */
     joinOnLoad?: boolean;
+    /**
+     * Optional. Flag that when set to true, requires fileUrl to be set before container can be joined.
+     */
+    alwaysUseExistingFile?: boolean;
+    /**
+     * Optional. File URL to load, if using file partitioning.
+     */
+    fileUrl?: string;
 }
 
 /**
  * React Context provider component for using Live Share data objects & joining a Live Share session using `LiveShareClient`.
  */
-export const LiveShareOdspProvider: React.FC<ILiveShareProviderProps> = (
+export const LiveShareOdspProvider: React.FC<ILiveShareOdspProviderProps> = (
     props
 ) => {
     const startedRef = React.useRef(false);
     const clientRef = React.useRef(
-        new LiveShareOdspClient(props.host, props.clientOptions)
+        new LiveShareOdspClient(props.host, props.clientOptions, props.fileUrl)
     );
     const [results, setResults] = React.useState<
         ILiveShareOdspJoinResults | undefined
@@ -75,6 +83,14 @@ export const LiveShareOdspProvider: React.FC<ILiveShareProviderProps> = (
             initialObjects?: LoadableObjectClassRecord,
             onInitializeContainer?: (container: IFluidContainer) => void
         ): Promise<ILiveShareOdspJoinResults> => {
+            if (props.alwaysUseExistingFile === true && !props.fileUrl) {
+                throw new Error(
+                    "LiveShareOdspProvider:join - attempting to join container when `alwaysUseExistingFile` is true and `fileUrl` is not set. To fix this error, ensure `fileUrl` is a valid string before calling `join()`."
+                );
+            }
+            // Set the latest file URL
+            clientRef.current.fileUrl = props.fileUrl;
+            // Start joining container
             startedRef.current = true;
             const results = await clientRef.current.join(
                 initialObjects,
@@ -83,7 +99,7 @@ export const LiveShareOdspProvider: React.FC<ILiveShareProviderProps> = (
             setResults(results);
             return results;
         },
-        []
+        [props.alwaysUseExistingFile, props.fileUrl]
     );
 
     /**

@@ -16,6 +16,7 @@ import {
     SharingLinkHeader,
     createOdspCreateContainerRequest,
 } from "@fluidframework/odsp-driver";
+import { IRequest } from "@fluidframework/core-interfaces";
 import { IOdspResolvedUrl } from "@fluidframework/odsp-driver-definitions";
 import { Client as MSGraphClient } from "@microsoft/microsoft-graph-client";
 import {
@@ -59,6 +60,19 @@ export class OdspInstance {
 
     public async createContainer(
         serviceContainerConfig: OdspCreateContainerConfig,
+        containerSchema: ContainerSchema
+    ): Promise<OdspResources> {
+        const container = await this.getContainerInternal(
+            serviceContainerConfig,
+            new DOProviderContainerRuntimeFactory(containerSchema),
+            true
+        );
+
+        return this.getContainerAndServices(container, serviceContainerConfig);
+    }
+
+    public async createContainerForExistingFile(
+        serviceContainerConfig: OdspGetContainerConfig,
         containerSchema: ContainerSchema
     ): Promise<OdspResources> {
         const container = await this.getContainerInternal(
@@ -186,15 +200,23 @@ export class OdspInstance {
         if (createNew) {
             // Generate an ODSP driver specific new file request using the provided metadata for the file from the
             // containerConfig.
-            const { siteUrl, driveId, folderName, fileName } =
-                containerConfig as OdspCreateContainerConfig;
-
-            const request = createOdspCreateContainerRequest(
-                siteUrl,
-                driveId,
-                folderName,
-                fileName
-            );
+            let request: IRequest;
+            if (isOdspCreateContainerConfig(containerConfig)) {
+                const { siteUrl, driveId, folderName, fileName } =
+                    containerConfig;
+                request = createOdspCreateContainerRequest(
+                    siteUrl,
+                    driveId,
+                    folderName,
+                    fileName
+                );
+            } else {
+                const { fileUrl } = containerConfig;
+                request = {
+                    url: fileUrl,
+                    headers: {},
+                };
+            }
             // We're not actually using the code proposal (our code loader always loads the same module regardless of the
             // proposal), but the Container will only give us a NullRuntime if there's no proposal.  So we'll use a fake
             // proposal.
@@ -220,4 +242,15 @@ export class OdspInstance {
         }
         return container;
     }
+}
+
+function isOdspCreateContainerConfig(
+    value: any
+): value is OdspCreateContainerConfig {
+    return (
+        value.siteUrl !== undefined &&
+        value.driveId !== undefined &&
+        value.folderName !== undefined &&
+        value.fileName !== undefined
+    );
 }

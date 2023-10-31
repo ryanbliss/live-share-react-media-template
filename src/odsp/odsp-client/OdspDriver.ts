@@ -86,6 +86,7 @@ export class OdspDriver {
         const endIndex = config.username.indexOf(".");
         const tenantName = config.username.substring(startIndex, endIndex);
         const siteUrl = `https://${tenantName}.sharepoint.com`;
+        // const siteUrl = `https://${tenantName}-my.sharepoint.com/personal/admin_m365x82694150_onmicrosoft_com`;
         const options = config?.options ?? {};
         options.isolateSocketCache = true;
 

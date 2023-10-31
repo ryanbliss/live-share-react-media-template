@@ -41,6 +41,21 @@ export class OdspClient {
         );
     }
 
+    static async createContainerForExistingFile(
+        containerConfig: OdspGetContainerConfig,
+        containerSchema: ContainerSchema
+    ): Promise<OdspResources> {
+        if (!OdspClient.globalInstance) {
+            throw new Error(
+                "OdspClient has not been properly initialized before attempting to create a container"
+            );
+        }
+        return OdspClient.globalInstance.createContainerForExistingFile(
+            containerConfig,
+            containerSchema
+        );
+    }
+
     static async getContainer(
         containerConfig: OdspGetContainerConfig,
         containerSchema: ContainerSchema

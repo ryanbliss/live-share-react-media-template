@@ -8,7 +8,7 @@ import { OdspConnectionConfig } from "./interfaces";
 import { OdspClient } from "./OdspClient";
 import { OdspDriver } from "./OdspDriver";
 
-const initDriver = async () => {
+const initDriver = async (): Promise<OdspDriver> => {
     console.log("Driver init------");
 
     const { graphToken, sharePointToken, pushToken, userName, siteUrl } =
@@ -23,7 +23,7 @@ const initDriver = async () => {
 
     const driver: OdspDriver = await OdspDriver.createFromEnv({
         username: userName,
-        directory: "Sonali-Brainstorm-1",
+        // directory: "Sonali-Brainstorm-1",
         supportsBrowserAuth: true,
         odspEndpointName: "odsp",
     });
@@ -39,7 +39,7 @@ const initDriver = async () => {
     return driver;
 };
 
-export const getOdspDriver = async () => {
+export const getOdspDriver = async (): Promise<OdspDriver> => {
     const odspDriver = await initDriver();
     console.log("InitiateDriver:: getOdspDriver: INITIAL DRIVER", odspDriver);
     return odspDriver;

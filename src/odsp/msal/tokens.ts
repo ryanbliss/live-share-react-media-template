@@ -20,8 +20,12 @@ const msalConfig = {
 const graphScopes = ["FileStorageContainer.Selected"];
 
 const sharePointScopes = [
-    "https://M365x82694150.sharepoint.com/Container.Selected",
-    "https://M365x82694150.sharepoint.com/AllSites.Write",
+    // "https://M365x82694150.sharepoint.com/Container.Selected",
+    // "https://M365x82694150.sharepoint.com/AllSites.Write",
+    // "https://M365x82694150-my.sharepoint.com/personal/admin_m365x82694150_onmicrosoft_com/Container.Selected",
+    // "https://M365x82694150-my.sharepoint.com/personal/admin_m365x82694150_onmicrosoft_com/AllSites.Write",
+    "https://M365x82694150-my.sharepoint.com/Container.Selected",
+    // "https://M365x82694150-my.sharepoint.com/personal/admin_m365x82694150_onmicrosoft_com/AllSites.Write",
 ];
 
 const pushScopes = [
@@ -45,7 +49,8 @@ export async function getTokens(): Promise<{
     const startIndex = username.indexOf("@") + 1;
     const endIndex = username.indexOf(".");
     const tenantName = username.substring(startIndex, endIndex);
-    const siteUrl = `https://${tenantName}.sharepoint.com`;
+    // const siteUrl = `https://${tenantName}.sharepoint.com`;
+    const siteUrl = `https://${tenantName}-my.sharepoint.com/personal/admin_m365x82694150_onmicrosoft_com`;
 
     try {
         // Attempt to acquire SharePoint token silently

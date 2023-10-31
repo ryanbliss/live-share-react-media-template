@@ -1,5 +1,6 @@
 import {
     ConnectionState,
+    ContainerSchema,
     FluidContainer,
     IFluidContainer,
     LoadableObjectClassRecord,
@@ -8,7 +9,9 @@ import {
     OdspClient,
     OdspContainerServices,
     OdspCreateContainerConfig,
+    OdspDriver,
     OdspGetContainerConfig,
+    OdspResources,
     getOdspDriver,
 } from "../odsp-client";
 import { v4 as uuid } from "uuid";
@@ -22,8 +25,13 @@ import {
     getLiveShareContainerSchemaProxy,
 } from "@microsoft/live-share";
 import { FluidTurboClient } from "@microsoft/live-share-turbo";
+import { createOdspUrl } from "@fluidframework/odsp-driver";
 
 const documentId = uuid();
+
+interface IOldJoinContainerResults extends OdspResources {
+    isNew: boolean;
+}
 
 /**
  * Response object from `.joinContainer()` in `LiveShareClient`
@@ -40,12 +48,18 @@ export class LiveShareOdspClient extends FluidTurboClient {
     private readonly _runtime: LiveShareRuntime;
     private readonly _options: ILiveShareClientOptions;
     private _results: ILiveShareOdspJoinResults | undefined;
+    private _fileUrl: string | undefined;
     /**
      * Creates a new `LiveShareClient` instance.
      * @param host Host for the current Live Share session.
      * @param options Optional. Configuration options for the client.
+     * @param fileUrl Optional. Known file URL to connect to. Use when file URL has an associated partition.
      */
-    constructor(host: ILiveShareHost, options?: ILiveShareClientOptions) {
+    constructor(
+        host: ILiveShareHost,
+        options?: ILiveShareClientOptions,
+        fileUrl?: string
+    ) {
         super();
         // Validate host passed in
         if (!host) {
@@ -66,6 +80,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
                 ? new LocalTimestampProvider()
                 : options?.timestampProvider,
         };
+        this._fileUrl = fileUrl;
         this._runtime = new LiveShareRuntime(this._host, this._options, true);
     }
 
@@ -74,6 +89,16 @@ export class LiveShareOdspClient extends FluidTurboClient {
      */
     public get isTesting(): boolean {
         return getIsTestClient(this._host, this._options);
+    }
+
+    /**
+     * Get the file URL associated with this client.
+     */
+    public get fileUrl(): string | undefined {
+        return this._fileUrl;
+    }
+    public set fileUrl(value: string | undefined) {
+        this._fileUrl = value;
     }
 
     /**
@@ -118,15 +143,79 @@ export class LiveShareOdspClient extends FluidTurboClient {
             this.getContainerSchema(initialObjects),
             this._runtime
         );
-        console.log(
-            "LiveShareOdspClient::joinContainer: initiating the driver"
-        );
+        console.log("LiveShareOdspClient::join: initiating the driver");
         const odspDriver = await getOdspDriver();
-        console.log(
-            "LiveShareOdspClient::joinContainer: initial driver",
-            odspDriver
-        );
+        console.log("LiveShareOdspClient::join: initial driver", odspDriver);
+        let container: FluidContainer;
+        let services: OdspContainerServices;
+        let created: boolean;
 
+        if (this.fileUrl) {
+            const url = createOdspUrl({
+                siteUrl: odspDriver.siteUrl,
+                driveId: odspDriver.driveId,
+                dataStorePath: "/",
+                itemId: this.fileUrl,
+            });
+            try {
+                console.log(
+                    "LiveShareOdspClient::join: attempting to get existing container"
+                );
+                const { fluidContainer, containerServices } =
+                    await this.getExistingContainer(url, containerSchema);
+                container = fluidContainer;
+                services = containerServices;
+                created = false;
+            } catch (error: unknown) {
+                console.log(
+                    "LiveShareOdspClient::join: attempting to create new container"
+                );
+                const { fluidContainer, containerServices } =
+                    await this.createContainerForExistingFile(
+                        url,
+                        containerSchema
+                    );
+                onContainerFirstCreated?.(fluidContainer);
+                container = fluidContainer;
+                services = containerServices;
+                created = true;
+            }
+        } else {
+            const { fluidContainer, containerServices, isNew } =
+                await this.oldJoin(
+                    odspDriver,
+                    containerSchema,
+                    onContainerFirstCreated
+                );
+            container = fluidContainer;
+            services = containerServices;
+            created = isNew;
+        }
+
+        if (container.connectionState !== ConnectionState.Connected) {
+            await new Promise<void>((resolve) => {
+                container.once("connected", () => {
+                    resolve();
+                });
+            });
+        }
+
+        const results = {
+            container,
+            services,
+            timestampProvider: this._runtime.timestampProvider,
+            created,
+        };
+        this._results = results;
+        return results;
+    }
+
+    // Non-partitioned flow that assumes container should be created with random uuid and use local storage
+    private async oldJoin(
+        odspDriver: OdspDriver,
+        containerSchema: ContainerSchema,
+        onContainerFirstCreated?: (container: IFluidContainer) => void
+    ): Promise<IOldJoinContainerResults> {
         const { containerId, isNew } = this.getContainerId();
 
         let container: FluidContainer;
@@ -165,34 +254,43 @@ export class LiveShareOdspClient extends FluidTurboClient {
             );
             location.hash = itemId;
         } else {
-            const containerConfig: OdspGetContainerConfig = {
-                fileUrl: containerId, //pass file url
-            };
-
             const { fluidContainer, containerServices } =
-                await OdspClient.getContainer(containerConfig, containerSchema);
+                await this.getExistingContainer(containerId, containerSchema);
 
             container = fluidContainer;
             services = containerServices;
         }
 
-        if (container.connectionState !== ConnectionState.Connected) {
-            await new Promise<void>((resolve) => {
-                container.once("connected", () => {
-                    resolve();
-                });
-            });
-        }
-
-        const results = {
-            container,
-            // TODO: fix
-            services,
-            timestampProvider: this._runtime.timestampProvider,
-            created: isNew,
+        return {
+            fluidContainer: container,
+            containerServices: services,
+            isNew,
         };
-        this._results = results;
-        return results;
+    }
+
+    private async getExistingContainer(
+        url: string,
+        containerSchema: ContainerSchema
+    ): Promise<OdspResources> {
+        const containerConfig: OdspGetContainerConfig = {
+            fileUrl: url, //pass file url
+        };
+
+        return await OdspClient.getContainer(containerConfig, containerSchema);
+    }
+
+    private async createContainerForExistingFile(
+        url: string,
+        containerSchema: ContainerSchema
+    ): Promise<OdspResources> {
+        const containerConfig: OdspGetContainerConfig = {
+            fileUrl: url, //pass file url
+        };
+
+        return await OdspClient.createContainerForExistingFile(
+            containerConfig,
+            containerSchema
+        );
     }
 
     private getContainerId(): { containerId: string; isNew: boolean } {
