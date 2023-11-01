@@ -48,8 +48,8 @@ const MeetingStage: FC = () => {
         <LiveShareOdspProvider
             host={hostRef.current}
             joinOnLoad
-            // alwaysUseExistingFile
-            // fileUrl="EU7PHEpsGeJGjHUYgqda5SgB8m8YNvvXRM6-5vElYp9T0g"
+            alwaysUseExistingFile
+            itemId="01P7ONBQJ44PPK3JSKXVAYRRISDMID2NEL"
             clientOptions={LIVE_SHARE_OPTIONS}
         >
             <div style={{ backgroundColor: "black" }}>

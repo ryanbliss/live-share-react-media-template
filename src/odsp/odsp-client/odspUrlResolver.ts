@@ -26,6 +26,12 @@ export class OdspUrlResolver implements IUrlResolver {
     public async resolve(request: IRequest): Promise<IResolvedUrl> {
         try {
             const resolvedUrl = await this.driverUrlResolver.resolve(request);
+            console.log(
+                "odspUrlResolver::resolve: starting url",
+                request.url,
+                "\nending url:",
+                resolvedUrl
+            );
             return resolvedUrl;
         } catch (error) {
             console.error(error);
@@ -69,10 +75,22 @@ export class OdspUrlResolver implements IUrlResolver {
         resolvedUrl: IResolvedUrl,
         relativeUrl: string
     ): Promise<string> {
-        return this.driverUrlResolver.getAbsoluteUrl(resolvedUrl, relativeUrl);
+        const absoluteUrl = await this.driverUrlResolver.getAbsoluteUrl(
+            resolvedUrl,
+            relativeUrl
+        );
+        console.log(
+            "odspUrlResolver::getAbsoluteUrl: getting absolute url",
+            absoluteUrl
+        );
+        return absoluteUrl;
     }
 
     public async createCreateNewRequest(fileName: string): Promise<IRequest> {
+        console.log(
+            "odspUrlResolver::createCreateNewRequest: creating new request for",
+            fileName
+        );
         const filePath = "/r11s/";
         const driveItem = await getDriveItemByRootFileName(
             this.server,

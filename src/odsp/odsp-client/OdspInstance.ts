@@ -10,6 +10,7 @@ import {
     IRuntimeFactory,
 } from "@fluidframework/container-definitions";
 import { IDocumentServiceFactory } from "@fluidframework/driver-definitions";
+import { LoaderHeader } from "@fluidframework/container-definitions";
 import {
     OdspDriverUrlResolverForShareLink,
     OdspDocumentServiceFactory,
@@ -24,6 +25,7 @@ import {
     DOProviderContainerRuntimeFactory,
     FluidContainer,
 } from "@fluidframework/fluid-static";
+import { getDefaultObjectFromContainer } from "@fluidframework/aqueduct";
 import {
     OdspCreateContainerConfig,
     OdspGetContainerConfig,
@@ -34,6 +36,7 @@ import { getContainerShareLink } from "./odspUtils";
 import { OdspAudience } from "./OdspAudience";
 import { OdspUrlResolver } from "./odspUrlResolver";
 import { IClient } from "@fluidframework/protocol-definitions";
+import { PolyfillOdspDocumentServiceFactory } from "./odspDocumentServiceFactory";
 
 /**
  * OdspInstance provides the ability to have a Fluid object backed by the ODSP service
@@ -46,7 +49,7 @@ export class OdspInstance {
         private readonly serviceConnectionConfig: OdspConnectionConfig,
         server: string
     ) {
-        this.documentServiceFactory = new OdspDocumentServiceFactory(
+        this.documentServiceFactory = new PolyfillOdspDocumentServiceFactory(
             serviceConnectionConfig.getSharePointToken,
             serviceConnectionConfig.getPushServiceToken,
             undefined
@@ -75,6 +78,9 @@ export class OdspInstance {
         serviceContainerConfig: OdspGetContainerConfig,
         containerSchema: ContainerSchema
     ): Promise<OdspResources> {
+        console.log(
+            "OdspInstance::createContainerForExistingFile: calling getContainerInternal"
+        );
         const container = await this.getContainerInternal(
             serviceContainerConfig,
             new DOProviderContainerRuntimeFactory(containerSchema),
@@ -204,6 +210,10 @@ export class OdspInstance {
             if (isOdspCreateContainerConfig(containerConfig)) {
                 const { siteUrl, driveId, folderName, fileName } =
                     containerConfig;
+                console.log(
+                    "OdspInstance::getContainerInternal: creating container for new file",
+                    containerConfig
+                );
                 request = createOdspCreateContainerRequest(
                     siteUrl,
                     driveId,
@@ -212,18 +222,42 @@ export class OdspInstance {
                 );
             } else {
                 const { fileUrl } = containerConfig;
+                console.log(
+                    "OdspInstance::getContainerInternal: creating container for existing fileUrl",
+                    fileUrl
+                );
                 request = {
                     url: fileUrl,
-                    headers: {},
+                    headers: {
+                        // [LoaderHeader.loadMode]: {
+                        //     /*
+                        //      * Connection to delta stream is made only when Container.connect() call is made.
+                        //      * Op fetching from storage is performed and ops are applied as they come in.
+                        //      * This is useful option if connection to delta stream is expensive and thus it's beneficial to move it
+                        //      * out from critical boot sequence, but it's beneficial to allow catch up to happen as fast as possible.
+                        //      */
+                        //     deltaConnection: "none",
+                        // },
+                    },
                 };
             }
             // We're not actually using the code proposal (our code loader always loads the same module regardless of the
             // proposal), but the Container will only give us a NullRuntime if there's no proposal.  So we'll use a fake
             // proposal.
             container = (await loader.createDetachedContainer({
-                package: "",
-                config: {},
+                package: "no-dynamic-package",
+                config: {
+                    version: "1.0",
+                },
             })) as Container;
+            // Get the default object to forcibly wait for the container to be initialized.
+            // So when container tries to attach, it will be ready to post the initialized container to the service.
+            // Otherwise (w/o doing getDefaultObjectFromContainer) we could end up in a bad state where container is created
+            // but it's empty if the first client leaves the session before the next summary is submitted to service.
+            // In this case, next time any client tries to load the default object from the container
+            // it will get stuck waiting for the default object which is never going to be submitted by any client.
+            // It's also cheaper to initialize container in a detached state which is totally local and in memory.
+            await getDefaultObjectFromContainer(container);
             await container.attach(request);
         } else {
             // Generate the request to fetch our existing container back using the provided SharePoint

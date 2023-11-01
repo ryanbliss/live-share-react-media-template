@@ -53,9 +53,9 @@ export interface ILiveShareOdspProviderProps {
      */
     alwaysUseExistingFile?: boolean;
     /**
-     * Optional. File URL to load, if using file partitioning.
+     * Optional. Item ID to load, if using file partitioning.
      */
-    fileUrl?: string;
+    itemId?: string;
 }
 
 /**
@@ -66,7 +66,7 @@ export const LiveShareOdspProvider: React.FC<ILiveShareOdspProviderProps> = (
 ) => {
     const startedRef = React.useRef(false);
     const clientRef = React.useRef(
-        new LiveShareOdspClient(props.host, props.clientOptions, props.fileUrl)
+        new LiveShareOdspClient(props.host, props.clientOptions, props.itemId)
     );
     const [results, setResults] = React.useState<
         ILiveShareOdspJoinResults | undefined
@@ -83,13 +83,13 @@ export const LiveShareOdspProvider: React.FC<ILiveShareOdspProviderProps> = (
             initialObjects?: LoadableObjectClassRecord,
             onInitializeContainer?: (container: IFluidContainer) => void
         ): Promise<ILiveShareOdspJoinResults> => {
-            if (props.alwaysUseExistingFile === true && !props.fileUrl) {
+            if (props.alwaysUseExistingFile === true && !props.itemId) {
                 throw new Error(
                     "LiveShareOdspProvider:join - attempting to join container when `alwaysUseExistingFile` is true and `fileUrl` is not set. To fix this error, ensure `fileUrl` is a valid string before calling `join()`."
                 );
             }
             // Set the latest file URL
-            clientRef.current.fileUrl = props.fileUrl;
+            clientRef.current.itemId = props.itemId;
             // Start joining container
             startedRef.current = true;
             const results = await clientRef.current.join(
@@ -99,7 +99,7 @@ export const LiveShareOdspProvider: React.FC<ILiveShareOdspProviderProps> = (
             setResults(results);
             return results;
         },
-        [props.alwaysUseExistingFile, props.fileUrl]
+        [props.alwaysUseExistingFile, props.itemId]
     );
 
     /**

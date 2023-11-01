@@ -48,17 +48,17 @@ export class LiveShareOdspClient extends FluidTurboClient {
     private readonly _runtime: LiveShareRuntime;
     private readonly _options: ILiveShareClientOptions;
     private _results: ILiveShareOdspJoinResults | undefined;
-    private _fileUrl: string | undefined;
+    private _itemId: string | undefined;
     /**
      * Creates a new `LiveShareClient` instance.
      * @param host Host for the current Live Share session.
      * @param options Optional. Configuration options for the client.
-     * @param fileUrl Optional. Known file URL to connect to. Use when file URL has an associated partition.
+     * @param itemId Optional. Known file URL to connect to. Use when file URL has an associated partition.
      */
     constructor(
         host: ILiveShareHost,
         options?: ILiveShareClientOptions,
-        fileUrl?: string
+        itemId?: string
     ) {
         super();
         // Validate host passed in
@@ -80,7 +80,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
                 ? new LocalTimestampProvider()
                 : options?.timestampProvider,
         };
-        this._fileUrl = fileUrl;
+        this._itemId = itemId;
         this._runtime = new LiveShareRuntime(this._host, this._options, true);
     }
 
@@ -94,11 +94,11 @@ export class LiveShareOdspClient extends FluidTurboClient {
     /**
      * Get the file URL associated with this client.
      */
-    public get fileUrl(): string | undefined {
-        return this._fileUrl;
+    public get itemId(): string | undefined {
+        return this._itemId;
     }
-    public set fileUrl(value: string | undefined) {
-        this._fileUrl = value;
+    public set itemId(value: string | undefined) {
+        this._itemId = value;
     }
 
     /**
@@ -150,12 +150,12 @@ export class LiveShareOdspClient extends FluidTurboClient {
         let services: OdspContainerServices;
         let created: boolean;
 
-        if (this.fileUrl) {
+        if (this.itemId) {
             const url = createOdspUrl({
                 siteUrl: odspDriver.siteUrl,
                 driveId: odspDriver.driveId,
-                dataStorePath: "/",
-                itemId: this.fileUrl,
+                dataStorePath: `/`,
+                itemId: this.itemId,
             });
             try {
                 console.log(
