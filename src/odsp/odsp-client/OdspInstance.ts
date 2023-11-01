@@ -10,10 +10,7 @@ import {
     IRuntimeFactory,
 } from "@fluidframework/container-definitions";
 import { IDocumentServiceFactory } from "@fluidframework/driver-definitions";
-import { LoaderHeader } from "@fluidframework/container-definitions";
 import {
-    OdspDriverUrlResolverForShareLink,
-    OdspDocumentServiceFactory,
     SharingLinkHeader,
     createOdspCreateContainerRequest,
 } from "@fluidframework/odsp-driver";
