@@ -26,6 +26,7 @@ import {
 } from "@microsoft/live-share";
 import { FluidTurboClient } from "@microsoft/live-share-turbo";
 import { createOdspUrl } from "@fluidframework/odsp-driver";
+import { NonRetryableError } from "@fluidframework/driver-utils";
 
 const documentId = uuid();
 
@@ -210,6 +211,64 @@ export class LiveShareOdspClient extends FluidTurboClient {
         return results;
     }
 
+    private async getExistingContainer(
+        url: string,
+        containerSchema: ContainerSchema
+    ): Promise<OdspResources> {
+        const containerConfig: OdspGetContainerConfig = {
+            fileUrl: url, //pass file url
+        };
+
+        return await OdspClient.getContainer(containerConfig, containerSchema);
+    }
+
+    private async createContainerForExistingFile(
+        url: string,
+        containerSchema: ContainerSchema
+    ): Promise<OdspResources> {
+        const containerConfig: OdspGetContainerConfig = {
+            fileUrl: url, //pass file url
+        };
+
+        try {
+            const results = await OdspClient.createContainerForExistingFile(
+                containerConfig,
+                containerSchema
+            );
+            return results;
+        } catch (error: unknown) {
+            if (error instanceof NonRetryableError) {
+                // It's a race condition when two or more clients try to create the container at the
+                // same time. Unlike typical Fluid scenarios where .fluid file is created before any client launches the
+                // collaboration scenario, Pages scenario creates Fluid container on demand when user starts editing page.
+                // So if current client gets rejected by Fluid service, try acquire the existing container again assuming this
+                // is created successfully by other clients.
+                // Note: We are suppressing caching here to always fetch the latest snapshot.
+                const results = await OdspClient.getContainer(
+                    containerConfig,
+                    containerSchema
+                );
+                return results;
+            }
+            throw error;
+        }
+    }
+
+    private getContainerId(): { containerId: string; isNew: boolean } {
+        let isNew = false;
+        console.log(
+            "LiveShareOdspClient::getContainerId: hash: ",
+            location.hash
+        );
+        if (location.hash.length === 0) {
+            isNew = true;
+        }
+        const hash = location.hash;
+        const itemId = hash.charAt(0) === "#" ? hash.substring(1) : hash;
+        const containerId = localStorage.getItem(itemId)!;
+        return { containerId, isNew };
+    }
+
     // Non-partitioned flow that assumes container should be created with random uuid and use local storage
     private async oldJoin(
         odspDriver: OdspDriver,
@@ -266,46 +325,6 @@ export class LiveShareOdspClient extends FluidTurboClient {
             containerServices: services,
             isNew,
         };
-    }
-
-    private async getExistingContainer(
-        url: string,
-        containerSchema: ContainerSchema
-    ): Promise<OdspResources> {
-        const containerConfig: OdspGetContainerConfig = {
-            fileUrl: url, //pass file url
-        };
-
-        return await OdspClient.getContainer(containerConfig, containerSchema);
-    }
-
-    private async createContainerForExistingFile(
-        url: string,
-        containerSchema: ContainerSchema
-    ): Promise<OdspResources> {
-        const containerConfig: OdspGetContainerConfig = {
-            fileUrl: url, //pass file url
-        };
-
-        return await OdspClient.createContainerForExistingFile(
-            containerConfig,
-            containerSchema
-        );
-    }
-
-    private getContainerId(): { containerId: string; isNew: boolean } {
-        let isNew = false;
-        console.log(
-            "LiveShareOdspClient::getContainerId: hash: ",
-            location.hash
-        );
-        if (location.hash.length === 0) {
-            isNew = true;
-        }
-        const hash = location.hash;
-        const itemId = hash.charAt(0) === "#" ? hash.substring(1) : hash;
-        const containerId = localStorage.getItem(itemId)!;
-        return { containerId, isNew };
     }
 }
 
