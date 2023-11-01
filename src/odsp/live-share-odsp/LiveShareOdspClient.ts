@@ -244,6 +244,9 @@ export class LiveShareOdspClient extends FluidTurboClient {
                 // So if current client gets rejected by Fluid service, try acquire the existing container again assuming this
                 // is created successfully by other clients.
                 // Note: We are suppressing caching here to always fetch the latest snapshot.
+                console.log(
+                    "LiveShareOdspClient::createContainerForExistingFile: create failed due to a conflict, calling getContainer"
+                );
                 const results = await OdspClient.getContainer(
                     containerConfig,
                     containerSchema
