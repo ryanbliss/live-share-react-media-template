@@ -12,7 +12,6 @@ import {
 } from "../components";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { useTeamsContext } from "../teams-js-hooks/useTeamsContext";
-import { LiveShareProvider } from "@microsoft/live-share-react";
 import { IN_TEAMS } from "../constants";
 import { LiveShareHost, app } from "@microsoft/teams-js";
 import {
@@ -24,6 +23,7 @@ import {
     useSharingStatus,
 } from "../teams-js-hooks/useSharingStatus";
 import { getInitialMediaItem } from "../utils/media-list";
+import { LiveShareOdspProvider } from "../odsp/live-share-odsp/LiveShareOdspProvider";
 
 const LIVE_SHARE_OPTIONS: ILiveShareClientOptions = {
     canSendBackgroundUpdates: false, // default to false so we can wait to see
@@ -43,11 +43,17 @@ const MeetingStage: FC = () => {
     // Set canSendBackgroundUpdates setting's initial value
     LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = shareStatus.isShareInitiator;
 
+    // TODO: replace with real spo token
+    const spoToken = "PLACEHOLDER";
+
     // Render the media player
     return (
-        <LiveShareProvider
+        <LiveShareOdspProvider
             host={hostRef.current}
             joinOnLoad
+            alwaysUseExistingFile
+            itemId="01P7ONBQJ44PPK3JSKXVAYRRISDMID2NEL"
+            spoToken={spoToken}
             clientOptions={LIVE_SHARE_OPTIONS}
         >
             <div style={{ backgroundColor: "black" }}>
@@ -59,7 +65,7 @@ const MeetingStage: FC = () => {
                     />
                 </LiveSharePage>
             </div>
-        </LiveShareProvider>
+        </LiveShareOdspProvider>
     );
 };
 
