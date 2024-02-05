@@ -8,18 +8,21 @@ import { OdspConnectionConfig } from "./interfaces";
 import { OdspClient } from "./OdspClient";
 import { OdspDriver } from "./OdspDriver";
 
-const initDriver = async (): Promise<OdspDriver> => {
+const initDriver = async (spoToken: string): Promise<OdspDriver> => {
     console.log("Driver init------");
 
-    const { graphToken, sharePointToken, pushToken, userName, siteUrl } =
-        await getTokens();
-    console.log(
-        "InitiateDriver::initDriver: tokens-------------------" + graphToken,
-        sharePointToken,
-        pushToken,
-        userName,
-        siteUrl
-    );
+    // const { graphToken, sharePointToken, pushToken, userName, siteUrl } =
+    //     await getTokens();
+    // console.log(
+    //     "InitiateDriver::initDriver: tokens-------------------" + graphToken,
+    //     sharePointToken,
+    //     pushToken,
+    //     userName,
+    //     siteUrl
+    // );
+
+    // TODO: get upn from decoded token
+    const userName = "blah@placeholder.com";
 
     const driver: OdspDriver = await OdspDriver.createFromEnv({
         username: userName,
@@ -32,15 +35,15 @@ const initDriver = async (): Promise<OdspDriver> => {
         getSharePointToken: driver.getStorageToken as any,
         getPushServiceToken: driver.getPushToken as any,
         getGraphToken: driver.getGraphToken as any,
-        getMicrosoftGraphToken: graphToken,
+        getMicrosoftGraphToken: spoToken,
     };
 
     OdspClient.init(connectionConfig, driver.siteUrl);
     return driver;
 };
 
-export const getOdspDriver = async (): Promise<OdspDriver> => {
-    const odspDriver = await initDriver();
+export const getOdspDriver = async (spoToken: string): Promise<OdspDriver> => {
+    const odspDriver = await initDriver(spoToken);
     console.log("InitiateDriver:: getOdspDriver: INITIAL DRIVER", odspDriver);
     return odspDriver;
 };

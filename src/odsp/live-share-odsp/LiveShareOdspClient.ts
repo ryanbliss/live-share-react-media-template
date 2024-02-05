@@ -50,6 +50,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
     private readonly _options: ILiveShareClientOptions;
     private _results: ILiveShareOdspJoinResults | undefined;
     private _itemId: string | undefined;
+    private _spoToken: string;
     /**
      * Creates a new `LiveShareClient` instance.
      * @param host Host for the current Live Share session.
@@ -58,8 +59,9 @@ export class LiveShareOdspClient extends FluidTurboClient {
      */
     constructor(
         host: ILiveShareHost,
+        spoToken: string,
         options?: ILiveShareClientOptions,
-        itemId?: string
+        itemId?: string,
     ) {
         super();
         // Validate host passed in
@@ -74,6 +76,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
             );
         }
         this._host = host;
+        this._spoToken = spoToken;
         // Save options
         this._options = {
             ...options,
@@ -145,7 +148,7 @@ export class LiveShareOdspClient extends FluidTurboClient {
             this._runtime
         );
         console.log("LiveShareOdspClient::join: initiating the driver");
-        const odspDriver = await getOdspDriver();
+        const odspDriver = await getOdspDriver(this._spoToken);
         console.log("LiveShareOdspClient::join: initial driver", odspDriver);
         let container: FluidContainer;
         let services: OdspContainerServices;

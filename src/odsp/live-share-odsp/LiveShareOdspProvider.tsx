@@ -53,6 +53,10 @@ export interface ILiveShareOdspProviderProps {
      */
     alwaysUseExistingFile?: boolean;
     /**
+     * SPO Graph token.
+     */
+    spoToken: string;
+    /**
      * Optional. Item ID to load, if using file partitioning.
      */
     itemId?: string;
@@ -66,7 +70,7 @@ export const LiveShareOdspProvider: React.FC<ILiveShareOdspProviderProps> = (
 ) => {
     const startedRef = React.useRef(false);
     const clientRef = React.useRef(
-        new LiveShareOdspClient(props.host, props.clientOptions, props.itemId)
+        new LiveShareOdspClient(props.host, props.spoToken, props.clientOptions, props.itemId)
     );
     const [results, setResults] = React.useState<
         ILiveShareOdspJoinResults | undefined
