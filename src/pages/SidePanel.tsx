@@ -19,7 +19,7 @@ import {
     ILiveShareClientOptions,
     TestLiveShareHost,
 } from "@microsoft/live-share";
-import { IN_TEAMS } from "../constants";
+import { AppConfiguration, IN_TEAMS } from "../constants";
 import { LiveShareProvider } from "@microsoft/live-share-react";
 
 const LIVE_SHARE_OPTIONS: ILiveShareClientOptions = {
@@ -36,7 +36,9 @@ const SidePanel: FC = () => {
         return null;
     }
     // Set canSendBackgroundUpdates setting's initial value
-    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = shareStatus.isShareInitiator;
+    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = AppConfiguration.isFullyLargeMeetingOptimized
+        ? shareStatus.isShareInitiator
+        : true;
 
     return (
         <LiveShareProvider host={hostRef.current} joinOnLoad>

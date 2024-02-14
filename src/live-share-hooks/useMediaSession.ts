@@ -14,6 +14,7 @@ import { MediaItem } from "../utils/media-list";
 import { useMediaSynchronizer } from "@microsoft/live-share-react";
 import {
     ACCEPT_PLAYBACK_CHANGES_FROM,
+    AppConfiguration,
     IN_TEAMS,
     UNIQUE_KEYS,
 } from "../constants";
@@ -37,6 +38,9 @@ export const useMediaSession = (
     selectedMediaItem: MediaItem | undefined,
     displayNotification: DisplayNotificationCallback
 ) => {
+    const canSendPositionUpdates = AppConfiguration.isFullyLargeMeetingOptimized
+        ? localUserIsPresenting || isShareInitiator
+        : true;
     const { mediaSynchronizer, suspended, beginSuspension, endSuspension } =
         useMediaSynchronizer(
             `${threadId}/${UNIQUE_KEYS.media}`, // unique key for meeting + media
@@ -44,7 +48,7 @@ export const useMediaSession = (
             selectedMediaItem?.src ?? null,
             ACCEPT_PLAYBACK_CHANGES_FROM,
             !localUserIsPresenting, // viewOnly for can play/pause/seek/setTrack
-            localUserIsPresenting || isShareInitiator // canSendPositionUpdates for large meeting optimizations
+            canSendPositionUpdates // canSendPositionUpdates for large meeting optimizations
         );
 
     // callback method to change the selected track src

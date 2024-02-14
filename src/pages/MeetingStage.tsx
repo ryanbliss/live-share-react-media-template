@@ -13,7 +13,7 @@ import {
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { useTeamsContext } from "../teams-js-hooks/useTeamsContext";
 import { LiveShareProvider } from "@microsoft/live-share-react";
-import { IN_TEAMS } from "../constants";
+import { AppConfiguration, IN_TEAMS } from "../constants";
 import { LiveShareHost, app } from "@microsoft/teams-js";
 import {
     ILiveShareClientOptions,
@@ -41,7 +41,9 @@ const MeetingStage: FC = () => {
         return null;
     }
     // Set canSendBackgroundUpdates setting's initial value
-    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = shareStatus.isShareInitiator;
+    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = AppConfiguration.isFullyLargeMeetingOptimized
+        ? shareStatus.isShareInitiator
+        : true;
 
     // Render the media player
     return (

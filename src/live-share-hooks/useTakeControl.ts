@@ -7,7 +7,7 @@ import {
     useFluidObjectsContext,
     useLiveFollowMode,
 } from "@microsoft/live-share-react";
-import { ACCEPT_PLAYBACK_CHANGES_FROM, UNIQUE_KEYS } from "../constants";
+import { ACCEPT_PLAYBACK_CHANGES_FROM, AppConfiguration, UNIQUE_KEYS } from "../constants";
 import { DisplayNotificationCallback } from "./useNotifications";
 
 export const useTakeControl = (
@@ -68,6 +68,7 @@ export const useTakeControl = (
 
     // Set canSendBackgroundUpdates when localUserIsPresenting changes
     useEffect(() => {
+        if (!AppConfiguration.isFullyLargeMeetingOptimized) return;
         // We will allow both the presenter and isShareInitiator to send background updates.
         // These will be the same as long as nobody has taken control since presenting started.
         // We want at least one client to always have this value == true so that `connect` events are not missed.
