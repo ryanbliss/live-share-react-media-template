@@ -24,7 +24,7 @@ export const useTakeControl = (
         );
 
     // Local user is the presenter
-    const localUserIsPresenting = state?.isLocalValue ?? false;
+    const localUserIsPresenting = state?.type === FollowModeType.activePresenter ?? false;
     const localUserIsEligiblePresenter = localUser
         ? localUser.roles.filter((role) =>
               ACCEPT_PLAYBACK_CHANGES_FROM.includes(role)

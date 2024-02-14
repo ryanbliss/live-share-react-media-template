@@ -22,7 +22,7 @@ export const LiveSharePage: FC<{
     return (
         <>
             {!!joinError && <PageError error={joinError} />}
-            {!!joinError && !!loadText && (
+            {!joinError && !!loadText && (
                 <FlexColumn
                     hAlign="center"
                     vAlign="center"
