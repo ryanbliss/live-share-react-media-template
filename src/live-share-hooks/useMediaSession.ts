@@ -11,7 +11,10 @@ import {
 import { useEffect, useCallback } from "react";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { MediaItem } from "../utils/media-list";
-import { useMediaSynchronizer } from "@microsoft/live-share-react";
+import {
+    useLiveShareContext,
+    useMediaSynchronizer,
+} from "@microsoft/live-share-react";
 import {
     ACCEPT_PLAYBACK_CHANGES_FROM,
     AppConfiguration,
@@ -20,6 +23,7 @@ import {
 } from "../constants";
 import { meeting } from "@microsoft/teams-js";
 import { DisplayNotificationCallback } from "./useNotifications";
+import { UpdateFollowStateCallback } from "./useTakeControl";
 
 /**
  * Hook that synchronizes a media element using MediaSynchronizer and LiveMediaSession
@@ -31,19 +35,21 @@ import { DisplayNotificationCallback } from "./useNotifications";
  * while MediaSynchronizer is synchronizing.
  */
 export const useMediaSession = (
-    threadId: string,
+    keyPrefix: string,
     localUserIsPresenting: boolean,
     isShareInitiator: boolean,
     player: AzureMediaPlayer | null,
     selectedMediaItem: MediaItem | undefined,
-    displayNotification: DisplayNotificationCallback
+    displayNotification: DisplayNotificationCallback,
+    updateFollowState: UpdateFollowStateCallback
 ) => {
+    const { timestampProvider } = useLiveShareContext();
     const canSendPositionUpdates = AppConfiguration.isFullyLargeMeetingOptimized
         ? localUserIsPresenting || isShareInitiator
         : true;
     const { mediaSynchronizer, suspended, beginSuspension, endSuspension } =
         useMediaSynchronizer(
-            `${threadId}/${UNIQUE_KEYS.media}`, // unique key for meeting + media
+            `${keyPrefix}/${UNIQUE_KEYS.media}`, // unique key for meeting + media
             player,
             selectedMediaItem?.src ?? null,
             ACCEPT_PLAYBACK_CHANGES_FROM,
@@ -55,6 +61,14 @@ export const useMediaSession = (
     const setTrack = useCallback(
         async (trackId: string) => {
             if (!localUserIsPresenting) return;
+            updateFollowState({
+                mediaId: selectedMediaItem?.id,
+                paused: true,
+                changed: {
+                    timestamp: timestampProvider?.getTimestamp() ?? 0,
+                    mediaPosition: 0,
+                },
+            });
             const metadata: ExtendedMediaMetadata = {
                 trackIdentifier: trackId,
                 liveStream: false,
@@ -65,11 +79,24 @@ export const useMediaSession = (
             };
             mediaSynchronizer?.setTrack(metadata);
         },
-        [mediaSynchronizer, selectedMediaItem, localUserIsPresenting]
+        [
+            mediaSynchronizer,
+            selectedMediaItem,
+            localUserIsPresenting,
+            updateFollowState,
+        ]
     );
 
     // callback method to play through the synchronizer
     const play = useCallback(async () => {
+        updateFollowState({
+            mediaId: selectedMediaItem?.id,
+            paused: false,
+            changed: {
+                timestamp: timestampProvider?.getTimestamp() ?? 0,
+                mediaPosition: player?.currentTime ?? 0,
+            },
+        });
         if (localUserIsPresenting) {
             // Synchronize the play action
             mediaSynchronizer?.play();
@@ -87,12 +114,22 @@ export const useMediaSession = (
         localUserIsPresenting,
         player,
         suspended,
+        timestampProvider,
         beginSuspension,
         endSuspension,
+        updateFollowState,
     ]);
 
     // callback method to play through the synchronizer
     const pause = useCallback(async () => {
+        updateFollowState({
+            mediaId: selectedMediaItem?.id,
+            paused: true,
+            changed: {
+                timestamp: timestampProvider?.getTimestamp() ?? 0,
+                mediaPosition: player?.currentTime ?? 0,
+            },
+        });
         if (localUserIsPresenting) {
             // Synchronize the pause action
             mediaSynchronizer?.pause();
@@ -112,11 +149,20 @@ export const useMediaSession = (
         suspended,
         beginSuspension,
         endSuspension,
+        updateFollowState,
     ]);
 
     // callback method to seek a video to a given timestamp (in seconds)
     const seekTo = useCallback(
         async (timestamp: number) => {
+            updateFollowState({
+                mediaId: selectedMediaItem?.id,
+                paused: player?.paused ?? true,
+                changed: {
+                    timestamp: timestampProvider?.getTimestamp() ?? 0,
+                    mediaPosition: timestamp,
+                },
+            });
             if (localUserIsPresenting) {
                 // Synchronize the seek action
                 mediaSynchronizer?.seekTo(timestamp);
@@ -139,6 +185,7 @@ export const useMediaSession = (
             suspended,
             beginSuspension,
             endSuspension,
+            updateFollowState,
         ]
     );
 

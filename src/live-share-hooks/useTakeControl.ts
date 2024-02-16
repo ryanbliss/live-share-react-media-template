@@ -1,30 +1,76 @@
 import { useCallback, useEffect, useRef } from "react";
 import {
+    FollowModePresenceUser,
     FollowModeType,
+    IFollowModeState,
     LiveDataObjectInitializeState,
+    LiveFollowMode,
 } from "@microsoft/live-share";
 import {
     useFluidObjectsContext,
     useLiveFollowMode,
 } from "@microsoft/live-share-react";
-import { ACCEPT_PLAYBACK_CHANGES_FROM, AppConfiguration, UNIQUE_KEYS } from "../constants";
+import {
+    ACCEPT_PLAYBACK_CHANGES_FROM,
+    AppConfiguration,
+    UNIQUE_KEYS,
+} from "../constants";
 import { DisplayNotificationCallback } from "./useNotifications";
+import { MediaItem, searchList } from "../utils/media-list";
+
+export interface IFollowModeData {
+    mediaId: string | undefined;
+    paused: boolean;
+    changed?: {
+        timestamp: number;
+        mediaPosition: number;
+    };
+}
+
+export type FollowModeState = IFollowModeState<IFollowModeData> | undefined;
+export type UpdateFollowStateCallback = (
+    state: IFollowModeData
+) => Promise<void>;
+export type FollowUserStateCallback = (userId: string) => Promise<void>;
+export type FollowModeUser = FollowModePresenceUser<IFollowModeData>;
+export type TLiveFollowMode = LiveFollowMode<IFollowModeData> | undefined;
 
 export const useTakeControl = (
     threadId: string,
     isShareInitiator: boolean,
-    displayNotification: DisplayNotificationCallback
+    displayNotification: DisplayNotificationCallback,
+    initialMediaItem: MediaItem | undefined
 ) => {
     const { clientRef } = useFluidObjectsContext();
-    const { state, localUser, startPresenting, liveFollowMode } =
-        useLiveFollowMode<null>(
-            `${threadId}/${UNIQUE_KEYS.takeControl}`,
-            null,
-            ACCEPT_PLAYBACK_CHANGES_FROM
-        );
+    const {
+        state,
+        localUser,
+        otherUsers,
+        followUser,
+        startPresenting,
+        stopPresenting,
+        stopFollowing,
+        endSuspension,
+        beginSuspension,
+        update,
+        liveFollowMode,
+    } = useLiveFollowMode<IFollowModeData>(
+        `${threadId}/${UNIQUE_KEYS.takeControl}`,
+        {
+            mediaId: initialMediaItem?.id,
+            paused: true,
+        },
+        ACCEPT_PLAYBACK_CHANGES_FROM
+    );
 
     // Local user is the presenter
-    const localUserIsPresenting = state?.type === FollowModeType.activePresenter ?? false;
+    const localUserIsPresenting = state?.type
+        ? [
+              FollowModeType.activePresenter,
+              FollowModeType.activeFollowers,
+              FollowModeType.local,
+          ].includes(state.type)
+        : false;
     const localUserIsEligiblePresenter = localUser
         ? localUser.roles.filter((role) =>
               ACCEPT_PLAYBACK_CHANGES_FROM.includes(role)
@@ -38,7 +84,9 @@ export const useTakeControl = (
         if (!state) return;
         if (state.type === FollowModeType.activePresenter) return;
         if (!localUserIsEligiblePresenter) return;
-        startPresenting();
+        startPresenting().catch((err) => {
+            console.error(err);
+        });
     }, [
         localUserIsEligiblePresenter,
         localUser,
@@ -88,6 +136,13 @@ export const useTakeControl = (
         if (!user) return;
         const userConnections = user.getConnections();
         if (userConnections.length === 0) return;
+        if (
+            ![
+                FollowModeType.activePresenter,
+                FollowModeType.followPresenter,
+            ].includes(state.type)
+        )
+            return;
         // Skip the first notification when the app first loads
         if (!hasSkippedFirstRef.current) {
             hasSkippedFirstRef.current = true;
@@ -99,12 +154,27 @@ export const useTakeControl = (
             userConnections[0].clientId,
             user.isLocalUser
         );
-    }, [state?.isLocalValue, liveFollowMode]);
+    }, [state?.type, liveFollowMode]);
+
+    const selectedMediaItem = searchList.find(
+        (item) => item.id === state?.value?.mediaId
+    );
 
     return {
+        localUser,
+        otherUsers,
         takeControlStarted: !!liveFollowMode,
         localUserIsEligiblePresenter,
         localUserIsPresenting,
+        selectedMediaItem,
+        state,
+        liveFollowMode,
+        updateFollowState: update,
+        followUser,
         takeControl,
+        stopFollowing,
+        stopPresenting,
+        beginSuspension,
+        endSuspension,
     };
 };

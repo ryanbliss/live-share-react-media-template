@@ -16,6 +16,7 @@ import MeetingStage from "./pages/MeetingStage";
 import SidePanel from "./pages/SidePanel";
 import TabConfig from "./pages/TabConfig";
 import { inTeams } from "./utils/inTeams";
+import ContentTab from "./pages/ContentTab";
 
 export const App = () => {
     const startedInitializingRef = useRef(false);
@@ -94,6 +95,7 @@ export const App = () => {
                     <Routes>
                         <Route path={"/"} element={<MeetingStage />} />
                         <Route path={"/sidepanel"} element={<SidePanel />} />
+                        <Route path={"/content"} element={<ContentTab />} />
                         <Route path={"/config"} element={<TabConfig />} />
                     </Routes>
                 </Router>

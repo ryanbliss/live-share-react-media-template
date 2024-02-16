@@ -10,14 +10,16 @@ import { FC } from "react";
 import { MediaItem } from "../utils/media-list";
 import { FlexItem, FlexRow } from "./flex";
 
-export const MediaCard: FC<{
+interface IMediaCardProps {
     mediaItem: MediaItem;
     nowPlayingId?: string;
     sharingActive: boolean;
     buttonText: string;
     selectMedia: (mediaItem: MediaItem) => void;
-    removeMediaItem: (id: string) => void;
-}> = ({
+    removeMediaItem?: (id: string) => void;
+}
+
+export const MediaCard: FC<IMediaCardProps> = ({
     mediaItem,
     nowPlayingId,
     sharingActive,
@@ -105,7 +107,7 @@ export const MediaCard: FC<{
                                 icon={<Delete20Regular />}
                                 title={"Remove from playlist"}
                                 onClick={() => {
-                                    removeMediaItem(mediaItem.id);
+                                    removeMediaItem?.(mediaItem.id);
                                 }}
                             />
                         )}

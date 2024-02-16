@@ -41,9 +41,10 @@ const MeetingStage: FC = () => {
         return null;
     }
     // Set canSendBackgroundUpdates setting's initial value
-    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = AppConfiguration.isFullyLargeMeetingOptimized
-        ? shareStatus.isShareInitiator
-        : true;
+    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates =
+        AppConfiguration.isFullyLargeMeetingOptimized
+            ? shareStatus.isShareInitiator
+            : true;
 
     // Render the media player
     return (
@@ -94,13 +95,22 @@ const MeetingStageContent: FC<IMeetingStateContentProps> = ({
 
     // Take control map
     const {
+        localUser,
+        otherUsers, // users array
         localUserIsPresenting, // boolean that is true if local user is currently presenting
         localUserIsEligiblePresenter, // boolean that is true if the local user has the required roles to present
+        liveFollowMode, // live follow mode dds
+        state, // follow mode state
         takeControl, // callback method to take control of playback
+        followUser,
+        updateFollowState,
+        stopFollowing,
+        stopPresenting,
     } = liveShareHooks.useTakeControl(
         threadId,
         shareStatus.isShareInitiator,
-        displayNotification
+        displayNotification,
+        SELECTED_MEDIA_ITEM
     );
 
     // Media session hook
@@ -116,7 +126,8 @@ const MeetingStageContent: FC<IMeetingStateContentProps> = ({
         shareStatus.isShareInitiator,
         player,
         SELECTED_MEDIA_ITEM,
-        displayNotification
+        displayNotification,
+        updateFollowState
     );
 
     // Set up the media player
@@ -139,16 +150,24 @@ const MeetingStageContent: FC<IMeetingStateContentProps> = ({
             <LiveNotifications notificationToDisplay={notificationToDisplay} />
             {/* Media Player */}
             <MediaPlayerContainer
+                localUser={localUser}
+                otherUsers={otherUsers}
                 player={player}
                 localUserIsPresenting={localUserIsPresenting}
                 localUserIsEligiblePresenter={localUserIsEligiblePresenter}
                 suspended={suspended}
                 canvasRef={canvasRef}
+                followState={state}
+                liveFollowMode={liveFollowMode}
                 play={play}
                 pause={pause}
                 seekTo={seekTo}
                 takeControl={takeControl}
+                followUser={followUser}
                 endSuspension={endSuspension}
+                updateFollowState={updateFollowState}
+                stopFollowing={stopFollowing}
+                stopPresenting={stopPresenting}
             >
                 {/* // Render video */}
                 <video

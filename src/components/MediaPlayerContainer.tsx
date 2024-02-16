@@ -30,6 +30,20 @@ import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { InkingManager, LiveCanvas } from "@microsoft/live-share-canvas";
 import { useVisibleVideoSize } from "../utils/useVisibleVideoSize";
 import { PlayerControls } from "./PlayerControls";
+import {
+    FollowModeState,
+    FollowModeUser,
+    FollowUserStateCallback,
+    IFollowModeData,
+    TLiveFollowMode,
+    UpdateFollowStateCallback,
+} from "../live-share-hooks";
+import { FlexRow } from "./flex";
+import { UserPositionAvatar } from "./UserPositionAvatar";
+import { FollowModeType, PresenceState } from "@microsoft/live-share";
+import { FollowModeInfoBar } from "./FollowModeInfoBar";
+import { FollowModeInfoText } from "./FollowModeInfoText";
+import { FollowModeSmallButton } from "./FollowModeSmallButton";
 
 const events = [
     "loadstart",
@@ -57,36 +71,52 @@ export interface IPlayerState {
 }
 
 interface IMediaPlayerContainerProps {
+    localUser: FollowModeUser | undefined;
+    otherUsers: FollowModeUser[];
     player: AzureMediaPlayer | null;
     liveCanvas?: LiveCanvas;
     localUserIsPresenting: boolean;
     localUserIsEligiblePresenter: boolean;
+    liveFollowMode: TLiveFollowMode;
     suspended: boolean;
     play: () => void;
     pause: () => void;
     seekTo: (time: number) => void;
     takeControl: () => void;
+    stopPresenting: () => Promise<void>;
+    stopFollowing: () => Promise<void>;
+    followUser: FollowUserStateCallback;
     endSuspension: () => void;
     nextTrack?: () => void; // todo?
+    updateFollowState: UpdateFollowStateCallback;
     canvasRef: MutableRefObject<HTMLDivElement | null>;
     inkingManager?: InkingManager;
+    followState: FollowModeState;
     children: ReactNode;
 }
 
 export const MediaPlayerContainer: FC<IMediaPlayerContainerProps> = ({
+    localUser,
+    otherUsers,
     player,
     liveCanvas,
     localUserIsPresenting,
     localUserIsEligiblePresenter,
     suspended,
+    liveFollowMode,
     play,
     pause,
     seekTo,
     takeControl,
+    stopPresenting,
+    stopFollowing,
+    followUser,
     endSuspension,
     nextTrack,
+    updateFollowState,
     canvasRef,
     inkingManager,
+    followState,
     children,
 }) => {
     const [showControls, setShowControls] = useState(true);
@@ -238,6 +268,85 @@ export const MediaPlayerContainer: FC<IMediaPlayerContainerProps> = ({
                         "linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.4))",
                 }}
             >
+                {/* Follow mode information / actions */}
+                {!!followState && followState.type !== FollowModeType.local && (
+                    <FollowModeInfoBar followState={followState}>
+                        <FollowModeInfoText
+                            localUser={localUser}
+                            otherUsers={otherUsers}
+                            followState={followState}
+                            liveFollowMode={liveFollowMode}
+                        />
+                        {followState.type ===
+                            FollowModeType.activePresenter && (
+                            <FollowModeSmallButton onClick={stopPresenting}>
+                                {"STOP"}
+                            </FollowModeSmallButton>
+                        )}
+                        {followState.type === FollowModeType.followUser && (
+                            <FollowModeSmallButton onClick={stopFollowing}>
+                                {"STOP"}
+                            </FollowModeSmallButton>
+                        )}
+                        {followState.type ===
+                            FollowModeType.suspendFollowPresenter && (
+                            <FollowModeSmallButton onClick={endSuspension}>
+                                {"FOLLOW"}
+                            </FollowModeSmallButton>
+                        )}
+                        {followState.type ===
+                            FollowModeType.suspendFollowUser && (
+                            <FollowModeSmallButton onClick={endSuspension}>
+                                {"RESUME"}
+                            </FollowModeSmallButton>
+                        )}
+                    </FollowModeInfoBar>
+                )}
+                {/* User position avatars */}
+                <div
+                    style={{
+                        position: "absolute",
+                        color: "white",
+                        left: 0,
+                        right: 0,
+                    }}
+                >
+                    {otherUsers
+                        .filter(
+                            (user) =>
+                                user.state !== PresenceState.offline &&
+                                user.data?.followingUserId !==
+                                    localUser?.userId &&
+                                user.userId !== followState?.followingUserId &&
+                                (localUser?.data?.followingUserId ||
+                                user.data?.followingUserId
+                                    ? localUser?.data?.followingUserId !==
+                                      user.data?.followingUserId
+                                    : true)
+                        )
+                        .map((user) => (
+                            <UserPositionAvatar
+                                key={user.userId}
+                                user={user}
+                                playerState={playerState}
+                                liveFollowMode={liveFollowMode}
+                                onClick={() => {
+                                    console.log("following user");
+                                    followUser(
+                                        user.data?.followingUserId ??
+                                            user.userId
+                                    )
+                                        .then(() => {
+                                            if (!user.data) return;
+                                            updateFollowState(
+                                                user.data.stateValue
+                                            );
+                                        })
+                                        .catch((err) => console.error(err));
+                                }}
+                            />
+                        ))}
+                </div>
                 {/* Seek Progress Bar */}
                 <PlayerProgressBar
                     currentTime={playerState.currentTime}
@@ -251,7 +360,9 @@ export const MediaPlayerContainer: FC<IMediaPlayerContainerProps> = ({
                     inkingManager={inkingManager}
                     liveCanvas={liveCanvas}
                     localUserIsEligiblePresenter={localUserIsEligiblePresenter}
-                    localUserIsPresenting={localUserIsPresenting}
+                    localUserIsPresenting={
+                        followState?.type === FollowModeType.activePresenter
+                    }
                     nextTrack={nextTrack}
                     playerState={playerState}
                     setInkActive={setInkActive}
