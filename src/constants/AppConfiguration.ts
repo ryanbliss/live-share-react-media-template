@@ -6,5 +6,5 @@ export interface IAppConfiguration {
     isFullyLargeMeetingOptimized: boolean;
 }
 export const AppConfiguration: IAppConfiguration = {
-    isFullyLargeMeetingOptimized: true,
+    isFullyLargeMeetingOptimized: false,
 }
