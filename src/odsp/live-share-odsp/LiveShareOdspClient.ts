@@ -201,6 +201,10 @@ export class LiveShareOdspClient extends FluidTurboClient {
             });
         }
 
+        if (created) {
+            await container.attach();
+        }
+
         const results = {
             container,
             services,

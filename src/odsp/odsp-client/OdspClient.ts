@@ -140,7 +140,7 @@ export class OdspClient {
             config: {},
         });
 
-        const fluidContainer = await this.createFluidContainer(
+        const fluidContainer = await this._createNewFluidContainer(
             container,
             this.properties.connection
         );
@@ -279,7 +279,7 @@ export class OdspClient {
         });
     }
 
-    private async createFluidContainer(
+    private async _createNewFluidContainer(
         container: IContainer,
         connection: OdspConnectionConfig
     ): Promise<IFluidContainer> {
