@@ -239,7 +239,6 @@ export class OdspClient {
             container,
             rootDataObject,
         });
-        // const fluidContainer = new FluidContainer(container, rootDataObject);
         fluidContainer.attach = attach;
         const services = await this.getContainerServices(container);
         return {

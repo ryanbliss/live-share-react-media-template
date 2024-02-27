@@ -9,6 +9,7 @@ import {
     LiveNotifications,
     LiveSharePage,
     MediaPlayerContainer,
+    PageError,
 } from "../components";
 import { AzureMediaPlayer } from "../utils/AzureMediaPlayer";
 import { useTeamsContext } from "../teams-js-hooks/useTeamsContext";
@@ -26,13 +27,14 @@ import { getInitialMediaItem } from "../utils/media-list";
 import { LiveShareOdspProvider } from "../odsp/live-share-odsp/LiveShareOdspProvider";
 import { ILiveShareOdspClientOptions } from "../odsp/live-share-odsp/LiveShareOdspClient";
 import { OdspTokenProvider } from "../odsp/live-share-odsp/OdspTokenProvider";
+import { useDriveId } from "../odsp/odsp-client/useDriveId";
 
 const LIVE_SHARE_OPTIONS: ILiveShareOdspClientOptions = {
     canSendBackgroundUpdates: false, // default to false so we can wait to see
     odspConnection: {
         tokenProvider: new OdspTokenProvider("[clientid]"),
-        siteUrl: "[site url]",
-        driveId: "[drive id]",
+        siteUrl: "[site url]", // ex: "https://M365x82694150.sharepoint.com"
+        driveId: "[default placeholder value]",
     },
     itemId: "01P7ONBQJ44PPK3JSKXVAYRRISDMID2NEL",
 };
@@ -40,16 +42,32 @@ const LIVE_SHARE_OPTIONS: ILiveShareOdspClientOptions = {
 const MeetingStage: FC = () => {
     // Teams context
     const context = useTeamsContext();
+    const {
+        driveId,
+        error: driveError,
+        loading: driveLoading,
+    } = useDriveId(
+        LIVE_SHARE_OPTIONS.odspConnection.siteUrl,
+        "[SPO TOKEN HERE]"
+    );
+    const shareStatus = useSharingStatus();
 
     const hostRef = useRef(
         IN_TEAMS ? LiveShareHost.create() : TestLiveShareHost.create()
     );
-    const shareStatus = useSharingStatus();
+    if (driveLoading || !driveId) {
+        return <div>{"Loading"}</div>;
+    }
+    if (driveError) {
+        return <PageError error={driveError} />;
+    }
     if (!shareStatus) {
         return null;
     }
     // Set canSendBackgroundUpdates setting's initial value
     LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = shareStatus.isShareInitiator;
+    // Set driveId value
+    LIVE_SHARE_OPTIONS.odspConnection.driveId = driveId;
 
     // Render the media player
     return (
