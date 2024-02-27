@@ -30,7 +30,7 @@ import { OdspTokenProvider } from "../odsp/live-share-odsp/OdspTokenProvider";
 const LIVE_SHARE_OPTIONS: ILiveShareOdspClientOptions = {
     canSendBackgroundUpdates: false, // default to false so we can wait to see
     odspConnection: {
-        tokenProvider: new OdspTokenProvider("[token]"),
+        tokenProvider: new OdspTokenProvider("[clientid]"),
         siteUrl: "[site url]",
         driveId: "[drive id]",
     },
