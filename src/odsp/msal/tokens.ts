@@ -37,20 +37,10 @@ const msalInstance = new PublicClientApplication(msalConfig);
 
 export async function getTokens(): Promise<{
     graphToken: string;
-    sharePointToken: string;
-    pushToken: string;
-    userName: string;
-    siteUrl: string;
 }> {
     const response = await msalInstance.loginPopup({ scopes: graphScopes });
 
     msalInstance.setActiveAccount(response.account);
-    const username = response.account?.username as string;
-    const startIndex = username.indexOf("@") + 1;
-    const endIndex = username.indexOf(".");
-    const tenantName = username.substring(startIndex, endIndex);
-    const siteUrl = `https://${tenantName}.sharepoint.com`;
-    // const siteUrl = `https://${tenantName}-my.sharepoint.com/personal/admin_m365x82694150_onmicrosoft_com`;
 
     try {
         // Attempt to acquire SharePoint token silently
@@ -67,19 +57,12 @@ export async function getTokens(): Promise<{
         const pushTokenResult: AuthenticationResult =
             await msalInstance.acquireTokenSilent(otherRequest);
 
-        tokenMap.set("graphToken", response.accessToken);
         tokenMap.set("sharePointToken", sharePointTokenResult.accessToken);
         tokenMap.set("pushToken", pushTokenResult.accessToken);
-        tokenMap.set("userName", username);
-        tokenMap.set("siteUrl", siteUrl);
 
         // Return both tokens
         return {
             graphToken: response.accessToken,
-            sharePointToken: sharePointTokenResult.accessToken,
-            pushToken: pushTokenResult.accessToken,
-            userName: response.account?.username as string,
-            siteUrl: siteUrl,
         };
     } catch (error) {
         if (error instanceof InteractionRequiredAuthError) {
@@ -96,19 +79,12 @@ export async function getTokens(): Promise<{
             const pushTokenResult: AuthenticationResult =
                 await msalInstance.acquireTokenPopup(otherRequest);
 
-            tokenMap.set("graphToken", response.accessToken);
             tokenMap.set("sharePointToken", sharePointTokenResult.accessToken);
             tokenMap.set("pushToken", pushTokenResult.accessToken);
-            tokenMap.set("userName", username);
-            tokenMap.set("siteUrl", siteUrl);
 
             // Return both tokens
             return {
                 graphToken: response.accessToken,
-                sharePointToken: sharePointTokenResult.accessToken,
-                pushToken: pushTokenResult.accessToken,
-                userName: response.account?.username as string,
-                siteUrl: siteUrl,
             };
         } else {
             // Handle any other error

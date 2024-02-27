@@ -24,9 +24,17 @@ import {
 } from "../teams-js-hooks/useSharingStatus";
 import { getInitialMediaItem } from "../utils/media-list";
 import { LiveShareOdspProvider } from "../odsp/live-share-odsp/LiveShareOdspProvider";
+import { ILiveShareOdspClientOptions } from "../odsp/live-share-odsp/LiveShareOdspClient";
+import { OdspTokenProvider } from "../odsp/live-share-odsp/OdspTokenProvider";
 
-const LIVE_SHARE_OPTIONS: ILiveShareClientOptions = {
+const LIVE_SHARE_OPTIONS: ILiveShareOdspClientOptions = {
     canSendBackgroundUpdates: false, // default to false so we can wait to see
+    odspConnection: {
+        tokenProvider: new OdspTokenProvider("[token]"),
+        siteUrl: "[site url]",
+        driveId: "[drive id]",
+    },
+    itemId: "01P7ONBQJ44PPK3JSKXVAYRRISDMID2NEL",
 };
 
 const MeetingStage: FC = () => {
@@ -43,17 +51,12 @@ const MeetingStage: FC = () => {
     // Set canSendBackgroundUpdates setting's initial value
     LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = shareStatus.isShareInitiator;
 
-    // TODO: replace with real spo token
-    const spoToken = "PLACEHOLDER";
-
     // Render the media player
     return (
         <LiveShareOdspProvider
             host={hostRef.current}
             joinOnLoad
             alwaysUseExistingFile
-            itemId="01P7ONBQJ44PPK3JSKXVAYRRISDMID2NEL"
-            spoToken={spoToken}
             clientOptions={LIVE_SHARE_OPTIONS}
         >
             <div style={{ backgroundColor: "black" }}>
