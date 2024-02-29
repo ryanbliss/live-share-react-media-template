@@ -80,12 +80,13 @@ export const LiveShareOdspProvider: React.FC<ILiveShareOdspProviderProps> = (
             initialObjects?: LoadableObjectClassRecord,
             onInitializeContainer?: (container: IFluidContainer) => void
         ): Promise<ILiveShareOdspJoinResults> => {
+            console.log(props.clientOptions);
             if (
-                props.alwaysUseExistingFile === true ||
+                props.alwaysUseExistingFile === true &&
                 !props.clientOptions.itemId
             ) {
                 throw new Error(
-                    "LiveShareOdspProvider:join - attempting to join container when `alwaysUseExistingFile` is true and `fileUrl` is not set. To fix this error, ensure `fileUrl` is a valid string before calling `join()`."
+                    "LiveShareOdspProvider:join - attempting to join container when `alwaysUseExistingFile` is true and `itemId` is not set. To fix this error, ensure `fileUrl` is a valid string before calling `join()`."
                 );
             }
             // Set the latest file URL
@@ -99,7 +100,11 @@ export const LiveShareOdspProvider: React.FC<ILiveShareOdspProviderProps> = (
             setResults(results);
             return results;
         },
-        [props.alwaysUseExistingFile, props.clientOptions.itemId]
+        [
+            props.alwaysUseExistingFile,
+            props.clientOptions,
+            props.clientOptions.itemId,
+        ]
     );
 
     /**

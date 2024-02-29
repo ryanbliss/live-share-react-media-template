@@ -33,11 +33,13 @@ const LIVE_SHARE_OPTIONS: ILiveShareOdspClientOptions = {
     canSendBackgroundUpdates: false, // default to false so we can wait to see
     odspConnection: {
         tokenProvider: new OdspTokenProvider("[clientid]"),
-        siteUrl: "[site url]", // ex: "https://M365x82694150.sharepoint.com"
+        siteUrl: "https://microsoft-my.sharepoint-df.com", // ex: "https://M365x82694150.sharepoint.com"
         driveId: "[default placeholder value]",
     },
-    itemId: "01P7ONBQJ44PPK3JSKXVAYRRISDMID2NEL",
+    itemId: "01UDM3Q2EH54436ZKDZBCL6I3EXSRR4Z6J",
 };
+
+export const TEST_AAD_TOKEN = "[token_here]";
 
 const MeetingStage: FC = () => {
     // Teams context
@@ -46,10 +48,7 @@ const MeetingStage: FC = () => {
         driveId,
         error: driveError,
         loading: driveLoading,
-    } = useDriveId(
-        LIVE_SHARE_OPTIONS.odspConnection.siteUrl,
-        "[SPO TOKEN HERE]"
-    );
+    } = useDriveId(LIVE_SHARE_OPTIONS.odspConnection.siteUrl, TEST_AAD_TOKEN);
     const shareStatus = useSharingStatus();
 
     const hostRef = useRef(

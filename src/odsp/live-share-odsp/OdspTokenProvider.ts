@@ -6,6 +6,7 @@
 import { PublicClientApplication } from "@azure/msal-browser";
 import { IOdspTokenProvider } from "@fluid-experimental/odsp-client";
 import { TokenResponse } from "@fluidframework/odsp-driver-definitions";
+import { TEST_AAD_TOKEN } from "../../pages/MeetingStage";
 
 // TODO: for 1P Microsoft apps, they should override this, since they don't need the same scopes as 3P
 export class OdspTokenProvider implements IOdspTokenProvider {
@@ -49,31 +50,32 @@ export class OdspTokenProvider implements IOdspTokenProvider {
     }
 
     private async fetchTokens(scope: string[]): Promise<string> {
-        const accounts = this.msalInstance.getAllAccounts();
-        let response;
+        return TEST_AAD_TOKEN;
+        // const accounts = this.msalInstance.getAllAccounts();
+        // let response;
 
-        if (accounts.length === 0) {
-            try {
-                // This will only work if loginPopup is synchronous, otherwise, you may need to handle the response in a different way
-                response = await this.msalInstance.loginPopup({
-                    scopes: ["FileStorageContainer.Selected"],
-                });
-            } catch (error) {
-                throw new Error(`MSAL error: ${error}`);
-            }
-        } else {
-            response = { account: accounts[0] };
-        }
+        // if (accounts.length === 0) {
+        //     try {
+        //         // This will only work if loginPopup is synchronous, otherwise, you may need to handle the response in a different way
+        //         response = await this.msalInstance.loginPopup({
+        //             scopes: ["FileStorageContainer.Selected"],
+        //         });
+        //     } catch (error) {
+        //         throw new Error(`MSAL error: ${error}`);
+        //     }
+        // } else {
+        //     response = { account: accounts[0] };
+        // }
 
-        this.msalInstance.setActiveAccount(response.account);
+        // this.msalInstance.setActiveAccount(response.account);
 
-        try {
-            const result = await this.msalInstance.acquireTokenSilent({
-                scopes: scope,
-            });
-            return result.accessToken;
-        } catch (error) {
-            throw new Error(`MSAL error: ${error}`);
-        }
+        // try {
+        //     const result = await this.msalInstance.acquireTokenSilent({
+        //         scopes: scope,
+        //     });
+        //     return result.accessToken;
+        // } catch (error) {
+        //     throw new Error(`MSAL error: ${error}`);
+        // }
     }
 }

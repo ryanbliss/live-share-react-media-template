@@ -163,6 +163,9 @@ export class LiveShareOdspClient extends FluidTurboClient {
                     this.itemId,
                     containerSchema
                 );
+                console.log(
+                    "LiveShareOdspClient::join: got existing container"
+                );
                 container = fluidContainer;
                 services = containerServices;
                 created = false;
@@ -177,7 +180,12 @@ export class LiveShareOdspClient extends FluidTurboClient {
                     this.itemId,
                     containerSchema
                 );
+                console.log(
+                    "LiveShareOdspClient: post createContainerForExistingFile attaching"
+                );
                 onContainerFirstCreated?.(fluidContainer);
+                await fluidContainer.attach();
+                console.log("LiveShareOdspClient: attached");
                 container = fluidContainer;
                 services = containerServices;
                 created = true;
@@ -194,15 +202,13 @@ export class LiveShareOdspClient extends FluidTurboClient {
         }
 
         if (container.connectionState !== ConnectionState.Connected) {
+            console.log("LiveShareOdspClient::join: connecting");
             await new Promise<void>((resolve) => {
                 container.once("connected", () => {
                     resolve();
                 });
             });
-        }
-
-        if (created) {
-            await container.attach();
+            console.log("LiveShareOdspClient::join: connected");
         }
 
         const results = {
