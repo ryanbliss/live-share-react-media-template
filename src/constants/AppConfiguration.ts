@@ -1,4 +1,3 @@
-
 export interface IAppConfiguration {
     /**
      * Flag to fully optimize for large meetings, including disabling background updates for non-leaders.
@@ -7,4 +6,4 @@ export interface IAppConfiguration {
 }
 export const AppConfiguration: IAppConfiguration = {
     isFullyLargeMeetingOptimized: true,
-}
+};

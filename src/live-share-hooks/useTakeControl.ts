@@ -7,7 +7,11 @@ import {
     useFluidObjectsContext,
     useLiveFollowMode,
 } from "@microsoft/live-share-react";
-import { ACCEPT_PLAYBACK_CHANGES_FROM, AppConfiguration, UNIQUE_KEYS } from "../constants";
+import {
+    ACCEPT_PLAYBACK_CHANGES_FROM,
+    AppConfiguration,
+    UNIQUE_KEYS,
+} from "../constants";
 import { DisplayNotificationCallback } from "./useNotifications";
 
 export const useTakeControl = (
@@ -24,7 +28,8 @@ export const useTakeControl = (
         );
 
     // Local user is the presenter
-    const localUserIsPresenting = state?.type === FollowModeType.activePresenter ?? false;
+    const localUserIsPresenting =
+        state?.type === FollowModeType.activePresenter ?? false;
     const localUserIsEligiblePresenter = localUser
         ? localUser.roles.filter((role) =>
               ACCEPT_PLAYBACK_CHANGES_FROM.includes(role)

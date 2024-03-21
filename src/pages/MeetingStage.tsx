@@ -41,9 +41,10 @@ const MeetingStage: FC = () => {
         return null;
     }
     // Set canSendBackgroundUpdates setting's initial value
-    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates = AppConfiguration.isFullyLargeMeetingOptimized
-        ? shareStatus.isShareInitiator
-        : true;
+    LIVE_SHARE_OPTIONS.canSendBackgroundUpdates =
+        AppConfiguration.isFullyLargeMeetingOptimized
+            ? shareStatus.isShareInitiator
+            : true;
 
     // Render the media player
     return (
